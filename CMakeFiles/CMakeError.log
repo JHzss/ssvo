@@ -1,0 +1,51 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/jh/ssvo/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_0183d/fast"
+/usr/bin/make -f CMakeFiles/cmTC_0183d.dir/build.make CMakeFiles/cmTC_0183d.dir/build
+make[1]: 正在进入目录 `/home/jh/ssvo/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_0183d.dir/CheckSymbolExists.c.o
+/usr/bin/cc     -o CMakeFiles/cmTC_0183d.dir/CheckSymbolExists.c.o   -c /home/jh/ssvo/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_0183d
+/home/jh/clion-2016.3.4/bin/cmake/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0183d.dir/link.txt --verbose=1
+/usr/bin/cc       CMakeFiles/cmTC_0183d.dir/CheckSymbolExists.c.o  -o cmTC_0183d -rdynamic 
+CMakeFiles/cmTC_0183d.dir/CheckSymbolExists.c.o：在函数‘main’中：
+CheckSymbolExists.c:(.text+0x16)：对‘pthread_create’未定义的引用
+collect2: error: ld returned 1 exit status
+make[1]: *** [cmTC_0183d] 错误 1
+make[1]:正在离开目录 `/home/jh/ssvo/CMakeFiles/CMakeTmp'
+make: *** [cmTC_0183d/fast] 错误 2
+
+File /home/jh/ssvo/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/jh/ssvo/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_4dc9d/fast"
+/usr/bin/make -f CMakeFiles/cmTC_4dc9d.dir/build.make CMakeFiles/cmTC_4dc9d.dir/build
+make[1]: 正在进入目录 `/home/jh/ssvo/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_4dc9d.dir/CheckFunctionExists.c.o
+/usr/bin/cc    -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_4dc9d.dir/CheckFunctionExists.c.o   -c /home/jh/clion-2016.3.4/bin/cmake/share/cmake-3.6/Modules/CheckFunctionExists.c
+Linking C executable cmTC_4dc9d
+/home/jh/clion-2016.3.4/bin/cmake/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4dc9d.dir/link.txt --verbose=1
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_4dc9d.dir/CheckFunctionExists.c.o  -o cmTC_4dc9d -rdynamic -lpthreads 
+/usr/bin/ld: 找不到 -lpthreads
+collect2: error: ld returned 1 exit status
+make[1]: *** [cmTC_4dc9d] 错误 1
+make[1]:正在离开目录 `/home/jh/ssvo/CMakeFiles/CMakeTmp'
+make: *** [cmTC_4dc9d/fast] 错误 2
+
+

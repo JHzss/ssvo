@@ -147,6 +147,23 @@ void Frame::getMapPoints(std::list<MapPoint::Ptr> &mpts)
         mpts.push_back(it.first);
 }
 
+    void Frame::getfraturesfrommappoint(std::list<MapPoint::Ptr> &mpts, std::vector<Feature::Ptr> &fts)
+    {
+
+        std::lock_guard<std::mutex> lock(mutex_feature_);
+        for(auto mpt:mpts)
+        {
+            for(auto p:mpt_fts_)
+            {
+                if(mpt->id_==p.first->id_)
+                {
+                    fts.push_back(p.second);
+                    break;
+                }
+            }
+        }
+    }
+
 bool Frame::addFeature(const Feature::Ptr &ft)
 {
     LOG_ASSERT(ft->mpt_ != nullptr) << " The feature is invalid with empty mappoint!";
@@ -174,6 +191,12 @@ bool Frame::removeMapPoint(const MapPoint::Ptr &mpt)
     std::lock_guard<std::mutex> lock(mutex_feature_);
     return (bool)mpt_fts_.erase(mpt);
 }
+
+    void Frame::removeallMapPoint()
+    {
+        std::lock_guard<std::mutex> lock(mutex_feature_);
+        mpt_fts_.clear();
+    }
 
 Feature::Ptr Frame::getFeatureByMapPoint(const MapPoint::Ptr &mpt)
 {

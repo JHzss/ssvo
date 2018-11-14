@@ -108,7 +108,7 @@ size_t FastDetector::detect(const ImgPyr &img_pyr, Corners &new_corners, const C
     size_t new_coners = corners_in_levels_[0].size();
     for(int level = 0; level < nlevels_; level++)
     {
-        new_coners += detectInLevel(img_pyr[level], detect_grids_[level], corners_in_levels_[level], eigen_threshold, border_);
+        new_coners += detectInLevel(img_pyr[level], detect_grids_[level], corners_in_levels_[level], 500, border_);
 
         const int scale = 1 << level;
         for(Corner &corner : corners_in_levels_[level])

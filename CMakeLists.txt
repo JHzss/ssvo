@@ -5,7 +5,7 @@ project(ssvo)
 ## User's option
 ## -----------------------
 option(SSVO_TEST_ENABLE "If build the test files." ON)
-option(SSVO_DBOW_ENABLE "If use the DBoW library." OFF)
+option(SSVO_DBOW_ENABLE "If use the DBoW library." ON)
 option(SSVO_TRACE_ENABLE "If use the time tracing." ON)
 message(STATUS "Test Enable  : "   ${SSVO_TEST_ENABLE})
 message(STATUS "DBoW Enable  : "   ${SSVO_DBOW_ENABLE})
@@ -23,6 +23,7 @@ endif()
 ## -----------------------
 ## Build setting
 ## -----------------------
+set(CMAKE_BUILD_TYPE Release)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -67,7 +68,8 @@ find_package(fast REQUIRED)
 include_directories(${fast_INCLUDE_DIR})
 
 # OpenCV
-find_package(OpenCV 3.1.0 REQUIRED)
+set(OpenCV_DIR /home/jh/opencv-3.2.0/build)
+find_package(OpenCV 3.2.0 REQUIRED)
 if(OpenCV_FOUND)
     message("-- Found OpenCV ${OpenCV_VERSION} in ${OpenCV_INCLUDE_DIRS}")
     include_directories(${OpenCV_INCLUDE_DIRS})
@@ -80,6 +82,7 @@ find_package(Eigen 3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Sophus
+set(Sophus_DIR /home/jh/Sophus/build)
 FIND_PACKAGE(Sophus REQUIRED)
 include_directories(${Sophus_INCLUDE_DIRS})
 
@@ -194,4 +197,4 @@ add_executable(monoVO_dataset demo/monoVO_dataset.cpp)
 target_link_libraries(monoVO_dataset ${PROJECT_NAME})
 
 add_executable(monoVO_live demo/monoVO_live.cpp)
-target_link_libraries(monoVO_live ${PROJECT_NAME})
+target_link_libraries(monoVO_live ${LINK_LIBS})

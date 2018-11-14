@@ -1,0 +1,1914 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="ssvo"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\Thirdparty\;CMake Files\Thirdparty\fast\;CMake Files\Thirdparty\fast\build\;CMake Files\..\;CMake Files\..\opencv-3.2.0\;CMake Files\..\opencv-3.2.0\build\;CMake Files\..\..\;CMake Files\..\..\..\;CMake Files\..\..\..\usr\;CMake Files\..\..\..\usr\local\;CMake Files\..\..\..\usr\local\lib\;CMake Files\..\..\..\usr\local\lib\x86_64-linux-gnu\;CMake Files\..\..\..\usr\local\lib\x86_64-linux-gnu\cmake\;CMake Files\..\..\..\usr\local\lib\x86_64-linux-gnu\cmake\eigen3\;CMake Files\..\..\..\usr\local\lib\cmake\;CMake Files\..\..\..\usr\local\lib\cmake\Ceres\;CMake Files\..\..\..\usr\local\lib\cmake\Pangolin\;CMake Files\..\Sophus\;CMake Files\..\Sophus\build\;CMake Files\cmake_modules\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/jh/ssvo"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/home/jh/ssvo"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_dbow3">
+				<Option output="/home/jh/ssvo/bin/test_dbow3" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_dbow3"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_dbow3/fast">
+				<Option output="/home/jh/ssvo/bin/test_dbow3" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_dbow3/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_timer">
+				<Option output="/home/jh/ssvo/bin/test_timer" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_timer"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_timer/fast">
+				<Option output="/home/jh/ssvo/bin/test_timer" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_timer/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_camera_model">
+				<Option output="/home/jh/ssvo/bin/test_camera_model" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_camera_model"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_camera_model/fast">
+				<Option output="/home/jh/ssvo/bin/test_camera_model" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_camera_model/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_alignment_2d">
+				<Option output="/home/jh/ssvo/bin/test_alignment_2d" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_alignment_2d"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_alignment_2d/fast">
+				<Option output="/home/jh/ssvo/bin/test_alignment_2d" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_alignment_2d/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="ssvo">
+				<Option output="/home/jh/ssvo/lib/libssvo.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 ssvo"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="ssvo/fast">
+				<Option output="/home/jh/ssvo/lib/libssvo.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 ssvo/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_alignment">
+				<Option output="/home/jh/ssvo/bin/test_alignment" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_alignment"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_alignment/fast">
+				<Option output="/home/jh/ssvo/bin/test_alignment" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_alignment/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_pattern">
+				<Option output="/home/jh/ssvo/bin/test_pattern" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_pattern"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_pattern/fast">
+				<Option output="/home/jh/ssvo/bin/test_pattern" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_pattern/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_feature_detector">
+				<Option output="/home/jh/ssvo/bin/test_feature_detector" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_feature_detector"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_feature_detector/fast">
+				<Option output="/home/jh/ssvo/bin/test_feature_detector" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_feature_detector/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_utils">
+				<Option output="/home/jh/ssvo/bin/test_utils" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_utils"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_utils/fast">
+				<Option output="/home/jh/ssvo/bin/test_utils" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_utils/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/home/jh/ssvo"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_initializer_seq">
+				<Option output="/home/jh/ssvo/bin/test_initializer_seq" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_initializer_seq"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_initializer_seq/fast">
+				<Option output="/home/jh/ssvo/bin/test_initializer_seq" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_initializer_seq/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_glog">
+				<Option output="/home/jh/ssvo/bin/test_glog" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_glog"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_glog/fast">
+				<Option output="/home/jh/ssvo/bin/test_glog" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_glog/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="monoVO_dataset">
+				<Option output="/home/jh/ssvo/bin/monoVO_dataset" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 monoVO_dataset"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="monoVO_dataset/fast">
+				<Option output="/home/jh/ssvo/bin/monoVO_dataset" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 monoVO_dataset/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_triangulation">
+				<Option output="/home/jh/ssvo/bin/test_triangulation" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_triangulation"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_triangulation/fast">
+				<Option output="/home/jh/ssvo/bin/test_triangulation" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_triangulation/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="monoVO_live">
+				<Option output="/home/jh/ssvo/bin/monoVO_live" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 monoVO_live"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="monoVO_live/fast">
+				<Option output="/home/jh/ssvo/bin/monoVO_live" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 monoVO_live/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_optimizer">
+				<Option output="/home/jh/ssvo/bin/test_optimizer" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_optimizer"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_optimizer/fast">
+				<Option output="/home/jh/ssvo/bin/test_optimizer" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jh/ssvo/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DSSVO_USE_TRACE"/>
+					<Add option="-DSSVO_DBOW_ENABLE"/>
+					<Add option="-DCOMPILEDWITHC11"/>
+					<Add directory="/home/jh/ssvo/Thirdparty/fast/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/build"/>
+					<Add directory="/home/jh/opencv-3.2.0/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/include/opencv"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/core/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/flann/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgproc/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ml/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/photo/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/video/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/viz/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/imgcodecs/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/shape/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videoio/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/highgui/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/objdetect/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/superres/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/ts/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/features2d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/calib3d/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/stitching/include"/>
+					<Add directory="/home/jh/opencv-3.2.0/modules/videostab/include"/>
+					<Add directory="/usr/local/include/eigen3"/>
+					<Add directory="/home/jh/Sophus"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/local/lib/cmake/Pangolin/../../../include"/>
+					<Add directory="/usr/include/eigen3"/>
+					<Add directory="/home/jh/DBow3/install/include"/>
+					<Add directory="/home/jh/ssvo"/>
+					<Add directory="/home/jh/ssvo/include"/>
+					<Add directory="/home/jh/catkin_ws/devel/include"/>
+					<Add directory="/opt/ros/indigo/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 test_optimizer/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/jh/ssvo/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/jh/ssvo/demo/monoVO_dataset.cpp">
+			<Option target="monoVO_dataset"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/demo/monoVO_live.cpp">
+			<Option target="monoVO_live"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/brief.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/camera.cpp">
+			<Option target="test_camera_model"/>
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/depth_filter.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/feature_alignment.cpp">
+			<Option target="test_alignment_2d"/>
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/feature_detector.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/feature_tracker.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/frame.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/image_alignment.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/initializer.cpp">
+			<Option target="ssvo"/>
+			<Option target="test_initializer_seq"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/keyframe.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/local_mapping.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/map.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/map_point.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/optimizer.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/seed.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/system.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/utils.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/src/viewer.cpp">
+			<Option target="ssvo"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_alignment.cpp">
+			<Option target="test_alignment"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_alignment_2d.cpp">
+			<Option target="test_alignment_2d"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_camera_model.cpp">
+			<Option target="test_camera_model"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_dbow3.cpp">
+			<Option target="test_dbow3"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_feature_detector.cpp">
+			<Option target="test_feature_detector"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_glog.cpp">
+			<Option target="test_glog"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_initializer_seq.cpp">
+			<Option target="test_initializer_seq"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_optimizer.cpp">
+			<Option target="test_optimizer"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_parttern.cpp">
+			<Option target="test_pattern"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_timer.cpp">
+			<Option target="test_timer"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_triangulation.cpp">
+			<Option target="test_triangulation"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/test/test_utils.cpp">
+			<Option target="test_utils"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/Thirdparty/fast/build/fastConfig.cmake">
+			<Option virtualFolder="CMake Files\Thirdparty\fast\build\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../opencv-3.2.0/build/OpenCVConfig-version.cmake">
+			<Option virtualFolder="CMake Files\..\opencv-3.2.0\build\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../opencv-3.2.0/build/OpenCVConfig.cmake">
+			<Option virtualFolder="CMake Files\..\opencv-3.2.0\build\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../opencv-3.2.0/build/OpenCVModules.cmake">
+			<Option virtualFolder="CMake Files\..\opencv-3.2.0\build\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/x86_64-linux-gnu/cmake/eigen3/Eigen3Config.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\x86_64-linux-gnu\cmake\eigen3\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Ceres/CeresConfigVersion.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Ceres\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Ceres/CeresConfig.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Ceres\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Ceres/FindEigen.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Ceres\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Ceres/FindGlog.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Ceres\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Ceres/FindGflags.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Ceres\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Ceres/CeresTargets.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Ceres\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Ceres/CeresTargets-release.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Ceres\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Pangolin/PangolinConfigVersion.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Pangolin\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Pangolin/PangolinConfig.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Pangolin\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Pangolin/PangolinTargets.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Pangolin\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../../../usr/local/lib/cmake/Pangolin/PangolinTargets-release.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\usr\local\lib\cmake\Pangolin\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/../Sophus/build/SophusConfig.cmake">
+			<Option virtualFolder="CMake Files\..\Sophus\build\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/cmake_modules/FindEigen.cmake">
+			<Option virtualFolder="CMake Files\cmake_modules\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/cmake_modules/FindGlog.cmake">
+			<Option virtualFolder="CMake Files\cmake_modules\"/>
+		</Unit>
+		<Unit filename="/home/jh/ssvo/cmake_modules/FindDBoW3.cmake">
+			<Option virtualFolder="CMake Files\cmake_modules\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

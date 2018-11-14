@@ -58,11 +58,15 @@ public:
 
     void getMapPoints(std::list<MapPoint::Ptr> &mpts);
 
+    void getfraturesfrommappoint(std::list<MapPoint::Ptr> &mpts,std::vector<Feature::Ptr> &fts);
+
     bool addFeature(const Feature::Ptr &ft);
 
     bool removeFeature(const Feature::Ptr &ft);
 
     bool removeMapPoint(const MapPoint::Ptr &mpt);
+
+    void removeallMapPoint();
 
     Feature::Ptr getFeatureByMapPoint(const MapPoint::Ptr &mpt);
 
@@ -136,6 +140,8 @@ public:
     SE3d optimal_Tcw_;//! for optimization
 
     double disparity_;//! for depth filter
+
+    cv::Mat rgb_;
 
 protected:
 

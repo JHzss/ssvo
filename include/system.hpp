@@ -90,6 +90,9 @@ private:
     std::list<double > frame_timestamp_buffer_;
     std::list<Sophus::SE3d> frame_pose_buffer_;
     std::list<KeyFrame::Ptr> reference_keyframe_buffer_;
+
+    std::vector<Frame::Ptr> all_frames;
+
 };
 
 }// namespce ssvo

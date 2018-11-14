@@ -7,11 +7,14 @@
 #include "optimizer.hpp"
 #include "time_tracing.hpp"
 #include "brief.hpp"
+#include <opencv2/core/eigen.hpp>
+
 
 #ifdef SSVO_DBOW_ENABLE
 #include <DBoW3/DescManip.h>
 #endif
 
+using namespace cv;
 namespace ssvo{
 
 std::ostream& operator<<(std::ostream& out, const Feature& ft)
@@ -871,9 +874,10 @@ void LocalMapper::addToDatabase(const KeyFrame::Ptr &keyframe)
 #endif
 }
 
-KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corners &corners)
+KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corners &corners, std::vector<uint64_t > &frame_ids,std::vector<MapPoint::Ptr> &MapPointMatches)
 {
     KeyFrame::Ptr reference = nullptr;
+//    cv::Ptr<DescriptorExtractor> descriptor = ORB::create();
 
 #ifdef SSVO_DBOW_ENABLE
 
@@ -886,30 +890,195 @@ KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corne
             corner.y >= border_br_[corner.level].y)
             continue;
 
-        kps.emplace_back(cv::KeyPoint(corner.x, corner.y, 31, -1, 0, corner.level));
+//        if(corner.level == 0)
+            kps.emplace_back(cv::KeyPoint(corner.x, corner.y, 31, -1, 0, corner.level));
     }
 
     BRIEF brief;
     cv::Mat _descriptors;
+
     brief.compute(frame->images(), kps, _descriptors);
+//    descriptor->compute(frame->getImage(0), kps, _descriptors);
+
     std::vector<cv::Mat> descriptors;
     descriptors.reserve(_descriptors.rows);
     for(int i = 0; i < _descriptors.rows; i++)
         descriptors.push_back(_descriptors.row(i));
 
+
+    //! 当前帧的词袋向量和特征向量
     DBoW3::BowVector bow_vec;
     DBoW3::FeatureVector feat_vec;
     vocabulary_.transform(descriptors, bow_vec, feat_vec, 4);
 
     DBoW3::QueryResults results;
-    database_.query(bow_vec, results, 1);
+    database_.query(bow_vec, results, 10);
+
+    std::cout<<"results size: "<<results.size()<<std::endl;
+//    std::cout<<"results_fea size: "<<result_fea[0].Score<<std::endl;
+
 
     if(results.empty())
         return nullptr;
 
+    for(auto res:results)
+    {
+        KeyFrame::Ptr ref = nullptr;
+        ref = map_->getKeyFrame(res.Id);
+        frame_ids.push_back(ref->frame_id_);
+        std::cout<<"score "<<ref->frame_id_<<" :"<< res.Score<<std::endl;
+    }
     DBoW3::Result result = results[0];
-
     reference = map_->getKeyFrame(result.Id);
+
+    //! get mappoint matches
+    std::vector<Feature::Ptr> FeaturesKF;
+    std::vector<MapPoint::Ptr> MapointsKF;
+//    reference->getFeatures(FeaturesKF);
+    std::vector<cv::KeyPoint> kps_ref;
+    for(auto &ft : reference->features())
+    {
+//        if(ft->level_ == 0)
+
+            kps_ref.emplace_back(cv::KeyPoint(ft.second->px_.x(), ft.second->px_.y(), 31, -1, 0, ft.second->level_));
+        MapointsKF.push_back(ft.first);
+
+    }
+    cv::Mat _descriptors_ref;
+
+    brief.compute(reference->images(), kps_ref, _descriptors_ref);
+//    descriptor->compute(reference->getImage(0), kps_ref, _descriptors_ref);
+
+    std::vector<cv::Mat> descriptors_ref;
+    descriptors_ref.reserve(_descriptors_ref.rows);
+    for(int i = 0; i < _descriptors_ref.rows; i++)
+        descriptors_ref.push_back(_descriptors_ref.row(i));
+
+
+    cv::Ptr<DescriptorMatcher> matcher  = DescriptorMatcher::create ( "BruteForce-Hamming" );
+
+    std::vector<DMatch> matches;
+    matcher->match(_descriptors_ref,_descriptors,matches);
+
+    double min_dist=10000, max_dist=0;
+
+    //找出所有匹配之间的最小距离和最大距离, 即是最相似的和最不相似的两组点之间的距离
+    for ( int i = 0; i < _descriptors_ref.rows; i++ )
+    {
+        double dist = matches[i].distance;
+        if ( dist < min_dist ) min_dist = dist;
+        if ( dist > max_dist ) max_dist = dist;
+    }
+
+    // 仅供娱乐的写法
+    min_dist = min_element( matches.begin(), matches.end(), [](const DMatch& m1, const DMatch& m2) {return m1.distance<m2.distance;} )->distance;
+    max_dist = max_element( matches.begin(), matches.end(), [](const DMatch& m1, const DMatch& m2) {return m1.distance<m2.distance;} )->distance;
+
+    printf ( "-- Max dist : %f \n", max_dist );
+    printf ( "-- Min dist : %f \n", min_dist );
+
+    //当描述子之间的距离大于两倍的最小距离时,即认为匹配有误.但有时候最小距离会非常小,设置一个经验值30作为下限.
+    std::vector< DMatch > good_matches;
+    std::vector< DMatch > ransac_good_matches;
+    for ( int i = 0; i < _descriptors_ref.rows; i++ )
+    {
+        if ( matches[i].distance <= max ( 3*min_dist, 50.0 ) )
+        {
+            good_matches.push_back ( matches[i] );
+        }
+    }
+
+
+
+    Mat img_match;
+    Mat img_goodmatch;
+    drawMatches ( reference->getImage(0), kps_ref, frame->getImage(0), kps, matches, img_match );
+    drawMatches ( reference->getImage(0), kps_ref, frame->getImage(0), kps, good_matches, img_goodmatch );
+    imshow ( "所有匹配点对", img_match );
+    imshow ( "优化后匹配点对", img_goodmatch );
+
+    std::string name1;
+    name1 = "/home/jh/img/暴力匹配.png";
+    cv::imwrite(name1,img_match);
+    std::string name2;
+    name2 = "/home/jh/img/筛选后（pnp前）匹配图.png";
+    cv::imwrite(name2,img_goodmatch);
+
+    std::vector<MapPoint::Ptr> MapointsKF_good;
+
+    for ( int i = 0; i < good_matches.size(); i++ )
+    {
+        MapointsKF_good.push_back(MapointsKF[good_matches[i].queryIdx]);
+//        std::cout<<"good point id: "<<MapointsKF[good_matches[i].queryIdx]->id_<<std::endl;
+    }
+
+    std::vector<Point3f> pts_3f;
+    std::vector<Point2f> pts_2f;
+    for ( int i = 0; i < good_matches.size(); i++ )
+    {
+        MapointsKF_good.push_back(MapointsKF[good_matches[i].queryIdx]);
+//        std::cout<<"good point id: "<<MapointsKF[good_matches[i].queryIdx]->id_<<std::endl;
+        pts_3f.push_back(Point3f(MapointsKF[good_matches[i].queryIdx]->pose().x(),MapointsKF[good_matches[i].queryIdx]->pose().y(),MapointsKF[good_matches[i].queryIdx]->pose().z()));
+        pts_2f.push_back(Point2f(kps[good_matches[i].trainIdx].pt.x,kps[good_matches[i].trainIdx].pt.y));
+    }
+
+    Mat r,t;
+    Mat K = (Mat_<double >(3,3)<<458.6,0,367,0,457,248,0,0,1);
+
+    Mat inliers;
+    solvePnPRansac(pts_3f,pts_2f,K,Mat(),r,t,false,100,8.0,0.99,inliers);
+
+//    std::cout<<"inliers size:"<<inliers<<std::endl;
+
+    std::vector<Point2f> pts_2f_ransac;
+    for(int i=0;i<inliers.rows;i++)
+    {
+        int j = inliers.at<int>(i,0);
+        ransac_good_matches.push_back(good_matches[j]);
+        pts_2f_ransac.push_back(pts_2f[j]);
+    }
+    std::cout<<"1 size:"<<matches.size()<<std::endl;
+    std::cout<<"2 size:"<<good_matches.size()<<std::endl;
+    std::cout<<"3 size:"<<ransac_good_matches.size()<<std::endl;
+
+
+    Mat img_ransac;
+    drawMatches ( reference->getImage(0), kps_ref, frame->getImage(0), kps, ransac_good_matches, img_ransac );
+    imshow ( "PNPrancac优化后匹配点对", img_ransac );
+    std::string name3;
+    name3 = "/home/jh/img/PNPrancac优化后匹配点对.png";
+    cv::imwrite(name3,img_ransac);
+
+
+
+    Mat img_ransac_jiaodian = frame->rgb_.clone();
+    std::vector<Point2f>::iterator iter1;
+    cv::RNG rng(time(0));
+    for(iter1=pts_2f_ransac.begin();iter1!=pts_2f_ransac.end();iter1++)
+    {
+        circle(img_ransac_jiaodian,*iter1,2,cv::Scalar(rng.uniform(0,255),rng.uniform(0,255),rng.uniform(0,255)),2);
+    }
+    imshow ( "rancac优化后角点", img_ransac_jiaodian );
+    std::string name4;
+    name4 = "/home/jh/img/rancac优化后角点.png";
+    cv::imwrite(name4,img_ransac_jiaodian);
+//    waitKey(0);
+
+
+    Mat R;
+    cv::Rodrigues(r,R);
+        std::cout<<"R=:"<< std::endl<<R<<std::endl;
+        std::cout<<"t=:"<<std::endl<<t<<std::endl;
+
+    Matrix3d RR;
+    Vector3d tt;
+    cv::cv2eigen(R,RR);
+    cv::cv2eigen(t,tt);
+
+    SE3d pose(RR,tt);
+
+    frame->setTcw(pose);
+
 
 #endif
 

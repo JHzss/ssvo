@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -Wall -O0 -march=native  -std=c++11 -Wall -O0 -march=native -O3 -mmmx -msse -msse -msse2 -msse3 -mssse3   CMakeFiles/test_timer.dir/test/test_timer.cpp.o  -o bin/test_timer  -L/home/jh/DBow3/install/lib -rdynamic 

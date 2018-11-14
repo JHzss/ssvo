@@ -4,7 +4,15 @@
 #include "image_alignment.hpp"
 #include "feature_alignment.hpp"
 #include "time_tracing.hpp"
+#include <opencv2/core/eigen.hpp>
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+
+using namespace cv;
+using namespace std;
 namespace ssvo{
 
 std::string Config::FileName;
@@ -94,6 +102,31 @@ System::~System()
     viewer_->waitForFinish();
 }
 
+    cv::Mat showMatch(const Mat& img1,const Mat& img2,const vector<Point2f>& points1,const vector<Point2f>& points2)
+    {
+        Mat img_show;
+        int image_width = img1.cols;
+        vector<Point2f> points1_copy,points2_copy;
+        points1_copy.assign(points1.begin(),points1.end());
+        points2_copy.assign(points2.begin(),points2.end());
+        for(auto iter2=points2_copy.begin();iter2!=points2_copy.end();)
+        {
+            iter2->x+=image_width;
+            iter2++;
+        }
+        cv::RNG rng(time(0));
+        hconcat(img1,img2,img_show);
+        vector<Point2f>::iterator iter1,iter2;
+        for(iter1=points1_copy.begin(),iter2=points2_copy.begin();iter1!=points1_copy.end();iter1++,iter2++)
+        {
+            line(img_show,*iter1,*iter2,cv::Scalar(rng.uniform(0,255),rng.uniform(0,255),rng.uniform(0,255)),1);
+//            circle(img_show,*iter1,1,0,2);
+//            circle(img_show,*iter2,1,0,2);
+        }
+        return img_show;
+    }
+
+
 void System::process(const cv::Mat &image, const double timestamp)
 {
     sysTrace->startTimer("total");
@@ -106,6 +139,10 @@ void System::process(const cv::Mat &image, const double timestamp)
         cv::cvtColor(gray, gray, cv::COLOR_RGB2GRAY);
 
     current_frame_ = Frame::create(gray, timestamp, camera_);
+
+    current_frame_->rgb_ = rgb_;
+
+    all_frames.push_back(current_frame_);
     double t1 = (double)cv::getTickCount();
     LOG(WARNING) << "[System] Frame " << current_frame_->id_ << " create time: " << (t1-t0)/cv::getTickFrequency();
     sysTrace->log("frame_id", current_frame_->id_);
@@ -123,7 +160,31 @@ void System::process(const cv::Mat &image, const double timestamp)
     else if(STAGE_RELOCALIZING == stage_)
     {
         status_ = relocalize();
+
+        if(status_ == STATUS_TRACKING_GOOD)
+        {
+            cout<<"STAGE_RELOCALIZING == stage_"<<endl;
+            depth_filter_->stopMainThread();
+            mapper_->stopMainThread();
+            waitKey(0);
+        }
+
     }
+
+    if(STATUS_TRACKING_BAD == status_)
+    {
+        status_ = relocalize();
+        if(status_ == STATUS_TRACKING_GOOD)
+        {
+            cout<<"STAGE_RELOCALIZING == stage_"<<endl;
+            depth_filter_->stopMainThread();
+            mapper_->stopMainThread();
+            waitKey(0);
+        }
+    }
+
+
+
     sysTrace->stopTimer("processing");
 
     finishFrame();
@@ -167,6 +228,9 @@ System::Status System::initialize()
 
 System::Status System::tracking()
 {
+//    if(current_frame_->id_ == 100)
+//        return STATUS_TRACKING_BAD;
+
     current_frame_->setRefKeyFrame(reference_keyframe_);
 
     //! track seeds
@@ -222,34 +286,218 @@ System::Status System::tracking()
 
 System::Status System::relocalize()
 {
+
+//    current_frame_->removeallMapPoint();
+    cout<<"begin   currnt size: "<<current_frame_->features().size()<<endl;
     Corners corners_new;
     Corners corners_old;
+    corners_old.clear();
     fast_detector_->detect(current_frame_->images(), corners_new, corners_old, Config::minCornersPerKeyFrame());
 
-    reference_keyframe_ = mapper_->relocalizeByDBoW(current_frame_, corners_new);
+    std::vector<uint64_t > frame_ids;
+    std::vector<MapPoint::Ptr> MapPointMatches;
+
+    cout<<"new corners size:"<<corners_new.size()<<endl;
+    reference_keyframe_ = mapper_->relocalizeByDBoW(current_frame_, corners_new, frame_ids , MapPointMatches);
+
+    if(frame_ids.size()<4)
+    {
+        return STATUS_TRACKING_BAD;
+    }
+
+    cout<<"second   currnt size: "<<current_frame_->features().size()<<endl;
+    std::cout<<"size: "<<frame_ids.size()<<std::endl;
+
+    if(reference_keyframe_ != nullptr)
+    {
+        std::cout<<"reference_keyframe_ frame id :"<<reference_keyframe_->frame_id_<<std::endl;
+    }
 
     if(reference_keyframe_ == nullptr)
         return STATUS_TRACKING_BAD;
-
-    current_frame_->setPose(reference_keyframe_->pose());
-
+    int matches1;
     //! alignment by SE3
-    AlignSE3 align;
-    int matches = align.run(reference_keyframe_, current_frame_, Config::alignTopLevel(), Config::alignBottomLevel(), 30, 1e-8);
-
-    if(matches < 30)
-        return STATUS_TRACKING_BAD;
+//    AlignSE3 align;
+//    matches = align.run(reference_keyframe_, current_frame_, Config::alignTopLevel(), Config::alignBottomLevel(), 30, 1e-8);
+//
+//    if(matches < 30)
+//        return STATUS_TRACKING_BAD;
 
     current_frame_->setRefKeyFrame(reference_keyframe_);
-    matches = feature_tracker_->reprojectLoaclMap(current_frame_);
+    matches1 = feature_tracker_->reprojectLoaclMap(current_frame_);
 
-    if(matches < 30)
+    vector<Feature::Ptr> feafromlocalmap;
+    current_frame_->getFeatures(feafromlocalmap);
+
+    Mat img_pro_jiaodian = current_frame_->rgb_.clone();
+    std::vector<Feature::Ptr>::iterator iter1;
+    cv::RNG rng(time(0));
+    for(iter1=feafromlocalmap.begin();iter1!=feafromlocalmap.end();iter1++)
+    {
+        circle(img_pro_jiaodian,Point2f((*iter1)->px_.x(),(*iter1)->px_.y()),2,cv::Scalar(rng.uniform(0,255),rng.uniform(0,255),rng.uniform(0,255)),2);
+    }
+    imshow ( "投影后角点", img_pro_jiaodian );
+    std::string name5;
+    name5 = "/home/jh/img/投影后角点.png";
+    cv::imwrite(name5,img_pro_jiaodian);
+
+
+    cout<<"third   currnt size: "<<current_frame_->features().size()<<endl;
+
+    if(matches1 < 30)
         return STATUS_TRACKING_BAD;
 
-    Optimizer::motionOnlyBundleAdjustment(current_frame_, false, true, true);
+
+    if(frame_ids.size()>0)
+    {
+        std::list<MapPoint::Ptr> mpts_ref;
+        std::list<MapPoint::Ptr> mpts_cur;
+        std::list<MapPoint::Ptr> mpts_temp;
+        all_frames[reference_keyframe_->frame_id_]->getMapPoints(mpts_ref);
+        current_frame_->getMapPoints(mpts_cur);
+        cout<<"mpts_ref size: "<<mpts_ref.size()<<endl;
+        cout<<"mpts_cur size: "<<mpts_cur.size()<<endl;
+
+        std::list<MapPoint::Ptr>::iterator iterator1;
+
+        mpts_temp.clear();
+
+        for(auto &mpt:mpts_ref)
+        {
+            for(auto mpt1:mpts_cur)
+            {
+                if(mpt->id_ == mpt1->id_)
+                {
+//                    cout<<"mpt id:"
+                    mpts_temp.push_back(mpt);
+                    break;
+                }
+            }
+
+        }
+        vector<Point2f> points1,points2,pts_2d;
+
+        cout<<"temp size:"<<mpts_temp.size()<<endl;
+        std::vector<Feature::Ptr> fts1,fts2;
+        all_frames[reference_keyframe_->frame_id_]->getfraturesfrommappoint(mpts_temp,fts1);
+        current_frame_->getfraturesfrommappoint(mpts_temp,fts2);
+
+        if(fts1.size()!=fts2.size())
+        {
+            cout<<"fts1 size: "<<fts1.size()<<endl;
+            cout<<"fts2 size: "<<fts2.size()<<endl;
+            cerr<<"wrong pipei"<<endl;
+        }
+
+        for(auto ft:fts1)
+        {
+            Point2f po;
+            po.x=ft->px_.x();
+            po.y=ft->px_.y();
+            points1.push_back(po);
+        }
+        for(auto ft:fts2)
+        {
+            Point2f po;
+            po.x=ft->px_.x();
+            po.y=ft->px_.y();
+            points2.push_back(po);
+            pts_2d.push_back(Point2f(ft->fn_.x()/ft->fn_.z(),ft->fn_.y()/ft->fn_.z()));
+        }
+
+        //pnp
+        vector<Point3f> pts_3f;
+
+        for(auto m:mpts_temp)
+        {
+            pts_3f.push_back(Point3f(m->pose().x(),m->pose().y(),m->pose().z()));
+        }
+
+        Optimizer::motionOnlyBundleAdjustment(current_frame_, false, true, false, false);
+
+        cout<<"pose() r:"<<endl<<current_frame_->pose().rotationMatrix()<<endl;
+        cout<<"pose() t:"<<endl<<current_frame_->pose().translation()<<endl;
+
+
+        mpts_ref.clear();
+        mpts_cur.clear();
+        all_frames[reference_keyframe_->frame_id_]->getMapPoints(mpts_ref);
+        current_frame_->getMapPoints(mpts_cur);
+
+        mpts_temp.clear();
+
+        for(auto &mpt:mpts_ref)
+        {
+            for(auto mpt1:mpts_cur)
+            {
+                if(mpt->id_ == mpt1->id_)
+                {
+//                    cout<<"mpt id:"
+                    mpts_temp.push_back(mpt);
+                    break;
+                }
+            }
+
+        }
+        fts1.clear();
+        fts2.clear();
+        pts_2d.clear();
+        points1.clear();
+        points2.clear();
+        all_frames[reference_keyframe_->frame_id_]->getfraturesfrommappoint(mpts_temp,fts1);
+        current_frame_->getfraturesfrommappoint(mpts_temp,fts2);
+
+        if(fts1.size()!=fts2.size())
+        {
+            cout<<"fts1 size: "<<fts1.size()<<endl;
+            cout<<"fts2 size: "<<fts2.size()<<endl;
+            cerr<<"wrong pipei"<<endl;
+        }
+
+        for(auto ft:fts1)
+        {
+            Point2f po;
+            po.x=ft->px_.x();
+            po.y=ft->px_.y();
+            points1.push_back(po);
+        }
+        for(auto ft:fts2)
+        {
+            Point2f po;
+            po.x=ft->px_.x();
+            po.y=ft->px_.y();
+            points2.push_back(po);
+            pts_2d.push_back(Point2f(ft->fn_.x()/ft->fn_.z(),ft->fn_.y()/ft->fn_.z()));
+        }
+
+        cv::Mat img1 = all_frames[reference_keyframe_->frame_id_]->rgb_;
+        cv::Mat img2 = current_frame_->rgb_;
+        cv::Mat img_show = showMatch(img1,img2,points1,points2);
+        cv::imshow("imshow",img_show);
+        std::string name1;
+        name1 = "/home/jh/img/BA后匹配.png";
+        cv::imwrite(name1,img_show);
+
+        std::string name2;
+        name2 = "/home/jh/img/current_frame.png";
+        cv::imwrite(name2,img2);
+//        cv::waitKey(0);
+    }
+
+
 
     if(current_frame_->featureNumber() < 30)
         return STATUS_TRACKING_BAD;
+
+
+    for(int i=0;i<frame_ids.size();i++)
+    {
+        cv::Mat img = all_frames[frame_ids[i]]->getImage(0);
+        std::string name;
+        name = "/home/jh/img/frame" + std::to_string(frame_ids[i]) + ".png";
+        cv::imwrite(name,img);
+        std::cout<<"save frame "<<frame_ids[i]<<std::endl;
+    }
 
     return STATUS_TRACKING_GOOD;
 }

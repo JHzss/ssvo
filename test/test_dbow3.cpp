@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
     DBoW3::QueryResults ret;
     for(size_t i = 0; i < bvs.size(); i++)
     {
-        db.query(bvs[i], ret, 4);
+        db.query(bvs[i], ret, 8);
 
         // ret[0] is always the same image in this case, because we added it to the
         // database. ret[1] is the second best match.

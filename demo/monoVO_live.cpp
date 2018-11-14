@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    System vo(argv[1]);
+//    System vo(argv[1]);
 
     std::string image_name;
     double timestamp;
@@ -31,10 +31,13 @@ int main(int argc, char *argv[])
         }
 
         timestamp = (double) cv::getTickCount() / cv::getTickFrequency();
-        vo.process(image, timestamp);
+        std::cout<<"time:"<<timestamp<<std::endl;
+//        vo.process(image, timestamp);
+        cv::imshow("image",image);
+        cv::waitKey(20);
     }
 
-    vo.saveTrajectoryTUM("trajectory.txt");
+//    vo.saveTrajectoryTUM("trajectory.txt");
     cv::waitKey(0);
 
     return 0;

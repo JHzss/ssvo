@@ -68,4 +68,4 @@ Glog.log_prefix: 0       # Set whether the log prefix should be prepended to eac
 Glog.log_dir: "" # If specified, logfiles are written into this directory instead of the default logging directory.
 
 # Trace log
-Trace.log_dir: "/home/neu/Desktop/ssvo/bin"
+Trace.log_dir: "/home/jh/data"
