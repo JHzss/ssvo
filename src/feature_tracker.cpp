@@ -318,4 +318,9 @@ bool FeatureTracker::trackFeature(const Frame::Ptr &frame_ref,
     return true;
 }
 
+//    void FeatureTracker::SetLoopClosing(LoopClosing::Ptr pLoopClosing)
+//    {
+//        mpLoopCloser = pLoopClosing;
+//    }
+
 }

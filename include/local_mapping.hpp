@@ -4,15 +4,20 @@
 #include <future>
 #include "global.hpp"
 #include "map.hpp"
+#include "LoopClosing.hpp"
 
 #ifdef SSVO_DBOW_ENABLE
 #include <DBoW3/DBoW3.h>
 #endif
 
+using namespace std;
 namespace ssvo{
+
+//class LoopClosing;
 
 class LocalMapper : public noncopyable
 {
+
 public:
 
     typedef std::shared_ptr<LocalMapper> Ptr;
@@ -36,6 +41,13 @@ public:
     static LocalMapper::Ptr create(bool report = false, bool verbose = false)
     { return LocalMapper::Ptr(new LocalMapper(report, verbose));}
 
+    void SetLoopCloser(LoopClosing::Ptr pLoopCloser);
+
+
+
+    DBoW3::Database getDatabase(){ return database_;}
+    DBoW3::Vocabulary getVocabulary(){ return vocabulary_;}
+
 private:
 
     LocalMapper(bool report, bool verbose);
@@ -58,9 +70,11 @@ private:
 
     void addToDatabase(const KeyFrame::Ptr &keyframe);
 
+
 public:
 
     Map::Ptr map_;
+    LoopClosing::Ptr mpLoopCloser;
 
 private:
 
@@ -99,6 +113,7 @@ private:
     std::mutex mutex_keyframe_;
     std::mutex mutex_optimalize_mpts_;
     std::condition_variable cond_process_;
+
 
 };
 

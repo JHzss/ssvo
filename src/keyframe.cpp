@@ -243,4 +243,25 @@ void KeyFrame::removeConnection(const KeyFrame::Ptr &kf)
     updateOrderedConnections();
 }
 
+    void KeyFrame::SetNotErase()
+    {
+        std::lock_guard<std::mutex> lock(mutex_connection_);
+    }
+
+    void KeyFrame::computeBoW(const DBoW3::Vocabulary &vocabulary)
+    {
+        LOG_ASSERT(!descriptors_.empty()) << "Please use conputeDescriptor first!";
+        
+        //todo change the descriptors_ from cv::Mat to std::vector<cv::Mat>
+        std::vector<cv::Mat > desps;
+        for(int i=0;i<descriptors_.rows;i++)
+        {
+            desps.push_back(descriptors_.row(i));
+        }
+        
+        if(bow_vec_.empty())
+            vocabulary.transform(desps, bow_vec_, feat_vec_, 4);
+    }
+
+
 }

@@ -23,7 +23,7 @@ endif()
 ## -----------------------
 ## Build setting
 ## -----------------------
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -143,6 +143,7 @@ LIST(APPEND SOURCEFILES
     src/system.cpp
     src/viewer.cpp
     src/brief.cpp
+    src/LoopClosing.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${SOURCEFILES})

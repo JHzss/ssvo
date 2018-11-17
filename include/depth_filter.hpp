@@ -5,7 +5,8 @@
 #include "map.hpp"
 #include "seed.hpp"
 #include "feature_detector.hpp"
-#include "local_mapping.hpp"
+#include "LoopClosing.hpp"
+#include "future"
 
 namespace ssvo
 {

@@ -8,6 +8,9 @@ lib/
 *build*/
 *install*/
 .idea/
+CMakeCache.txt
+/*CMakeFiles*/
+cmake_modules/FindDBoW3.cmake
 
 # for logging
 *INFO*

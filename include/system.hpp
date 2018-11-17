@@ -9,6 +9,7 @@
 #include "feature_detector.hpp"
 #include "feature_tracker.hpp"
 #include "local_mapping.hpp"
+#include "LoopClosing.hpp"
 #include "depth_filter.hpp"
 #include "viewer.hpp"
 
@@ -75,6 +76,7 @@ private:
     DepthFilter::Ptr depth_filter_;
     LocalMapper::Ptr mapper_;
 
+    LoopClosing::Ptr mpLoopCloser;
     Viewer::Ptr viewer_;
 
     std::thread viewer_thread_;

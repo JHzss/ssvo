@@ -3,6 +3,9 @@
 
 #include "global.hpp"
 #include "frame.hpp"
+#include <DBoW3/DBoW3.h>
+#include <DBoW3/DescManip.h>
+#include "brief.hpp"
 
 namespace ssvo
 {
@@ -32,6 +35,12 @@ public:
     inline static KeyFrame::Ptr create(const Frame::Ptr frame)
     { return Ptr(new KeyFrame(frame)); }
 
+    void SetNotErase();
+
+//    void computeDescriptor(const BRIEF::Ptr &brief);
+
+    void computeBoW(const DBoW3::Vocabulary& vocabulary);
+
 private:
 
     KeyFrame(const Frame::Ptr frame);
@@ -50,6 +59,11 @@ public:
 
     std::vector<Feature::Ptr> dbow_fts_;
     cv::Mat descriptors_;
+
+    DBoW3::BowVector bow_vec_;
+
+    DBoW3::FeatureVector feat_vec_;
+
     unsigned int dbow_Id_;
 
 private:

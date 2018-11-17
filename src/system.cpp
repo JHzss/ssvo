@@ -57,6 +57,18 @@ System::System(std::string config_file) :
     mapper_->startMainThread();
     depth_filter_->startMainThread();
 
+
+    //todo 最后的fix scale设置成了false，因为是单目
+    mpLoopCloser = LoopClosing::creat(mapper_->map_,mapper_->getDatabase(),mapper_->getVocabulary(),false);
+
+//    feature_tracker_->SetLoopClosing(mpLoopCloser); //还没什么用
+    mapper_->SetLoopCloser(mpLoopCloser);
+//    mpLoopCloser->SetTracker(feature_tracker_);
+//    mpLoopCloser->SetLocalMapper(mapper_);
+
+    mpLoopCloser->startMainThread();
+
+
     time_ = 1000.0/fps;
 
     options_.min_kf_disparity = 100;//MIN(Config::imageHeight(), Config::imageWidth())/5;

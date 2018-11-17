@@ -2,6 +2,7 @@
 #define _SSVO_BRIEF_HPP_
 
 #include <opencv2/core.hpp>
+#include "global.hpp"
 
 namespace ssvo
 {
@@ -16,7 +17,7 @@ public:
         EDGE_THRESHOLD = 19,
     };
 
-    BRIEF();
+    typedef std::shared_ptr<BRIEF> Ptr;
 
     void compute(const std::vector<cv::Mat> &images, const std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors);
 
@@ -24,8 +25,10 @@ public:
 
     void compute(const cv::KeyPoint &kpt, const cv::Mat &img, const cv::Point *pattern, uchar *desc);
 
+    inline static BRIEF::Ptr create() { return Ptr(new BRIEF());}
 private:
 
+    BRIEF();
     std::vector<cv::Point> pattern_;
 
     std::vector<int> umax_;

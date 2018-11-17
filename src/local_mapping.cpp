@@ -197,6 +197,8 @@ void LocalMapper::run()
             mapTrace->writeToFile();
 
             keyframe_last_ = keyframe_cur;
+
+            mpLoopCloser->InsertKeyFrame(keyframe_cur);
         }
     }
 }
@@ -861,8 +863,18 @@ void LocalMapper::addToDatabase(const KeyFrame::Ptr &keyframe)
     for(const Feature::Ptr &ft : keyframe->dbow_fts_)
         kps.emplace_back(cv::KeyPoint(ft->px_[0], ft->px_[1], 31, -1, 0, ft->level_));
 
-    BRIEF brief;
-    brief.compute(keyframe->images(), kps, keyframe->descriptors_);
+    cout<<"compute: "<<endl;
+//    cv::waitKey(0);
+    BRIEF::Ptr brief = BRIEF::create();
+    brief->compute(keyframe->images(), kps, keyframe->descriptors_);
+
+    keyframe->computeBoW(vocabulary_);
+
+    std::cout<<keyframe->bow_vec_<<std::endl;
+//    cv::waitKey(0);
+    
+
+    //todo 计算特征向量
 
     keyframe->dbow_Id_ = database_.add(keyframe->descriptors_, nullptr, nullptr);
 
@@ -889,9 +901,9 @@ KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corne
         kps.emplace_back(cv::KeyPoint(corner.x, corner.y, 31, -1, 0, corner.level));
     }
 
-    BRIEF brief;
+    BRIEF::Ptr brief;
     cv::Mat _descriptors;
-    brief.compute(frame->images(), kps, _descriptors);
+    brief->compute(frame->images(), kps, _descriptors);
     std::vector<cv::Mat> descriptors;
     descriptors.reserve(_descriptors.rows);
     for(int i = 0; i < _descriptors.rows; i++)
@@ -921,5 +933,11 @@ KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corne
 
     return reference;
 }
+
+    void LocalMapper::SetLoopCloser(LoopClosing::Ptr pLoopCloser)
+    {
+        mpLoopCloser = pLoopCloser;
+    }
+
 
 }

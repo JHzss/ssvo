@@ -1,10 +1,11 @@
 #ifndef _FEATURE_TRACKER_HPP_
 #define _FEATURE_TRACKER_HPP_
-#endif
+
 
 #include "global.hpp"
 #include "feature_detector.hpp"
 #include "map.hpp"
+//#include "LoopClosing.hpp"
 
 namespace ssvo
 {
@@ -43,6 +44,8 @@ public:
     inline static FeatureTracker::Ptr create(int width, int height, int grid_size, int border, bool report = false, bool verbose = false)
     {return FeatureTracker::Ptr(new FeatureTracker(width, height, grid_size, border, report, verbose));}
 
+//        void SetLoopClosing(LoopClosing::Ptr pLoopClosing);
+
 private:
 
     FeatureTracker(int width, int height, int grid_size, int border, bool report = false, bool verbose = false);
@@ -67,9 +70,13 @@ private:
     Grid<Feature::Ptr> grid_;
     std::vector<size_t> grid_order_;
 
+//        LoopClosing::Ptr mpLoopCloser;
+
     bool report_;
     bool verbose_;
     int total_project_;
 };
 
 }//! end of ssvo
+
+#endif
