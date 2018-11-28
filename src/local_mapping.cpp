@@ -7,10 +7,11 @@
 #include "optimizer.hpp"
 #include "time_tracing.hpp"
 #include "brief.hpp"
+#include "LoopClosing.hpp"
 
-#ifdef SSVO_DBOW_ENABLE
+//#ifdef SSVO_DBOW_ENABLE
 #include <DBoW3/DescManip.h>
-#endif
+//#endif
 
 namespace ssvo{
 
@@ -29,9 +30,10 @@ std::ostream& operator<<(std::ostream& out, const Feature& ft)
 TimeTracing::Ptr mapTrace = nullptr;
 
 //! LocalMapper
-LocalMapper::LocalMapper(bool report, bool verbose) :
+LocalMapper::LocalMapper(DBoW3::Vocabulary *mpVocabulary_, DBoW3::Database *mpDatabase_, bool report, bool verbose) :
     report_(report), verbose_(report&&verbose),
-    mapping_thread_(nullptr), stop_require_(false)
+    mapping_thread_(nullptr), stop_require_(false),
+    mpVocabulary_(mpVocabulary_),mpDatabase_(mpDatabase_)
 {
     map_ = Map::create();
 
@@ -66,12 +68,12 @@ LocalMapper::LocalMapper(bool report, bool verbose) :
     mapTrace.reset(new TimeTracing("ssvo_trace_map", trace_dir, time_names, log_names));
 
 
-#ifdef SSVO_DBOW_ENABLE
-    std::string voc_dir = Config::DBoWDirectory();
-    LOG_ASSERT(!voc_dir.empty()) << "Please check the config file! The DBoW directory is not set!";
-    vocabulary_ = DBoW3::Vocabulary(voc_dir);
-    LOG_ASSERT(!vocabulary_.empty()) << "Please check the config file! The Voc is empty!";
-    database_ = DBoW3::Database(vocabulary_, true, 4);
+//#ifdef SSVO_DBOW_ENABLE
+//    std::string voc_dir = Config::DBoWDirectory();
+//    LOG_ASSERT(!voc_dir.empty()) << "Please check the config file! The DBoW directory is not set!";
+//    mpVocabulary_ = DBoW3::Vocabulary(voc_dir);
+//    LOG_ASSERT(!vocabulary_.empty()) << "Please check the config file! The Voc is empty!";
+//    mpLoopCloser->mpKeyFrameDB = DBoW3::Database(vocabulary_, true, 4);
 
     const int nlevel = Config::imageTopLevel() + 1;
     const int cols = Config::imageWidth();
@@ -87,7 +89,7 @@ LocalMapper::LocalMapper(bool report, bool verbose) :
         border_br_[i].y = rows/(1<<i) - BRIEF::EDGE_THRESHOLD;
     }
 
-#endif
+//#endif
 
 }
 
@@ -96,8 +98,8 @@ void LocalMapper::createInitalMap(const Frame::Ptr &frame_ref, const Frame::Ptr 
     map_->clear();
 
     //! create Key Frame
-    KeyFrame::Ptr keyframe_ref = KeyFrame::create(frame_ref);
-    KeyFrame::Ptr keyframe_cur = KeyFrame::create(frame_cur);
+    KeyFrame::Ptr keyframe_ref = KeyFrame::create(mpDatabase_, frame_ref);
+    KeyFrame::Ptr keyframe_cur = KeyFrame::create(mpDatabase_, frame_cur);
 
     //! before import, make sure the features are stored in the same order!
     std::vector<Feature::Ptr> fts_ref, fts_cur;
@@ -189,9 +191,9 @@ void LocalMapper::run()
 
             checkCulling(keyframe_cur);
 
-            mapTrace->startTimer("dbow");
-            addToDatabase(keyframe_cur);
-            mapTrace->stopTimer("dbow");
+//            mapTrace->startTimer("dbow");
+//            addToDatabase(keyframe_cur);
+//            mapTrace->stopTimer("dbow");
 
             mapTrace->stopTimer("total");
             mapTrace->writeToFile();
@@ -233,6 +235,7 @@ void LocalMapper::insertKeyFrame(const KeyFrame::Ptr &keyframe)
     }
     else
     {
+        //这里应该是跳不进来吧。。。
         mapTrace->startTimer("total");
         std::list<MapPoint::Ptr> bad_mpts;
         int new_seed_features = 0;
@@ -257,7 +260,7 @@ void LocalMapper::insertKeyFrame(const KeyFrame::Ptr &keyframe)
 
         checkCulling(keyframe);
 
-        addToDatabase(keyframe);
+//        addToDatabase(keyframe);
 
         mapTrace->stopTimer("total");
         mapTrace->writeToFile();
@@ -814,6 +817,7 @@ void LocalMapper::checkCulling(const KeyFrame::Ptr &keyframe)
             if(redundant_observations > mpts.size() * 0.8)
             {
                 kf->setBad();
+                //todo remove keyframe database
                 map_->removeKeyFrame(kf);
                 count++;
             }
@@ -832,10 +836,10 @@ inline size_t Grid<Feature::Ptr>::getIndex(const Feature::Ptr &element)
     return static_cast<size_t>(px[1]/grid_size_)*grid_n_cols_
         + static_cast<size_t>(px[0]/grid_size_);
 }
-
+    //! 转移到loopclosing中进行
 void LocalMapper::addToDatabase(const KeyFrame::Ptr &keyframe)
 {
-#ifdef SSVO_DBOW_ENABLE
+//#ifdef SSVO_DBOW_ENABLE
     keyframe->getFeatures(keyframe->dbow_fts_);
 
     const int cols = keyframe->cam_->width();
@@ -868,26 +872,26 @@ void LocalMapper::addToDatabase(const KeyFrame::Ptr &keyframe)
     BRIEF::Ptr brief = BRIEF::create();
     brief->compute(keyframe->images(), kps, keyframe->descriptors_);
 
-    keyframe->computeBoW(vocabulary_);
+    keyframe->computeBoW(mpVocabulary_);
 
     std::cout<<keyframe->bow_vec_<<std::endl;
 //    cv::waitKey(0);
     
+        
 
-    //todo 计算特征向量
 
-    keyframe->dbow_Id_ = database_.add(keyframe->descriptors_, nullptr, nullptr);
+    keyframe->dbow_Id_ = (*mpDatabase_).add(keyframe->descriptors_, nullptr, nullptr);
 
     LOG_ASSERT(keyframe->dbow_Id_ == keyframe->id_) << "DBoW Id(" << keyframe->dbow_Id_ << ") is not match the keyframe's Id(" << keyframe->id_ << ")!";
 
-#endif
+//#endif
 }
 
 KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corners &corners)
 {
     KeyFrame::Ptr reference = nullptr;
 
-#ifdef SSVO_DBOW_ENABLE
+//#ifdef SSVO_DBOW_ENABLE
 
     std::vector<cv::KeyPoint> kps;
     for(const Corner & corner : corners)
@@ -911,10 +915,10 @@ KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corne
 
     DBoW3::BowVector bow_vec;
     DBoW3::FeatureVector feat_vec;
-    vocabulary_.transform(descriptors, bow_vec, feat_vec, 4);
+    (*mpVocabulary_).transform(descriptors, bow_vec, feat_vec, 4);
 
     DBoW3::QueryResults results;
-    database_.query(bow_vec, results, 1);
+    (*mpDatabase_).query(bow_vec, results, 1);
 
     if(results.empty())
         return nullptr;
@@ -923,7 +927,7 @@ KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corne
 
     reference = map_->getKeyFrame(result.Id);
 
-#endif
+//#endif
 
     // TODO 如果有关键帧剔除，则数据库索引存在问题。
     if(reference == nullptr)

@@ -6,14 +6,13 @@
 #include "map.hpp"
 #include "LoopClosing.hpp"
 
-#ifdef SSVO_DBOW_ENABLE
+//#ifdef SSVO_DBOW_ENABLE
 #include <DBoW3/DBoW3.h>
-#endif
+//#endif
 
 using namespace std;
 namespace ssvo{
 
-//class LoopClosing;
 
 class LocalMapper : public noncopyable
 {
@@ -38,19 +37,17 @@ public:
 
     KeyFrame::Ptr relocalizeByDBoW(const Frame::Ptr &frame, const Corners &corners);
 
-    static LocalMapper::Ptr create(bool report = false, bool verbose = false)
-    { return LocalMapper::Ptr(new LocalMapper(report, verbose));}
+    static LocalMapper::Ptr create(DBoW3::Vocabulary *mpVocabulary_, DBoW3::Database *mpDatabase_, bool report = false, bool verbose = false)
+    { return LocalMapper::Ptr(new LocalMapper(mpVocabulary_, mpDatabase_, report, verbose));}
 
     void SetLoopCloser(LoopClosing::Ptr pLoopCloser);
 
-
-
-    DBoW3::Database getDatabase(){ return database_;}
-    DBoW3::Vocabulary getVocabulary(){ return vocabulary_;}
+    DBoW3::Database* getDatabase(){ return mpDatabase_;}
+    DBoW3::Vocabulary* getVocabulary(){ return mpVocabulary_;}
 
 private:
 
-    LocalMapper(bool report, bool verbose);
+    LocalMapper(DBoW3::Vocabulary *mpVocabulary_, DBoW3::Database *mpDatabase_, bool report, bool verbose);
 
     void run();
 
@@ -94,12 +91,13 @@ private:
     std::deque<KeyFrame::Ptr> keyframes_buffer_;
     KeyFrame::Ptr keyframe_last_;
 
-#ifdef SSVO_DBOW_ENABLE
-    DBoW3::Vocabulary vocabulary_;
-    DBoW3::Database database_;
+    //! 没用到这个，直接用了loopclosing自带的database
+//#ifdef SSVO_DBOW_ENABLE
+    DBoW3::Vocabulary *mpVocabulary_;
+    DBoW3::Database *mpDatabase_;
     std::vector<cv::Point2i> border_tl_;
     std::vector<cv::Point2i> border_br_;
-#endif
+//#endif
 
     const bool report_;
     const bool verbose_;

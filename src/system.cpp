@@ -46,10 +46,19 @@ System::System(std::string config_file) :
         camera_ = std::static_pointer_cast<AbstractCamera>(atan_camera);
     }
 
+    //!jh
+//#ifdef SSVO_DBOW_ENABLE
+    std::string voc_dir = Config::DBoWDirectory();
+    LOG_ASSERT(!voc_dir.empty()) << "Please check the config file! The DBoW directory is not set!";
+    mpVocabulary_ = new DBoW3::Vocabulary(voc_dir);
+    mpDatabase_ = new DBoW3::Database(*mpVocabulary_);
+//#endif
+
+
     fast_detector_ = FastDetector::create(width, height, image_border, level+1, grid_size, grid_min_size, fast_max_threshold, fast_min_threshold);
     feature_tracker_ = FeatureTracker::create(width, height, 20, image_border, true);
     initializer_ = Initializer::create(fast_detector_, true);
-    mapper_ = LocalMapper::create(true, false);
+    mapper_ = LocalMapper::create(mpVocabulary_,mpDatabase_,true, false);
     DepthFilter::Callback depth_fliter_callback = std::bind(&LocalMapper::createFeatureFromSeed, mapper_, std::placeholders::_1);
     depth_filter_ = DepthFilter::create(fast_detector_, depth_fliter_callback, true);
     viewer_ = Viewer::create(mapper_->map_, cv::Size(width, height));
@@ -59,7 +68,7 @@ System::System(std::string config_file) :
 
 
     //todo 最后的fix scale设置成了false，因为是单目
-    mpLoopCloser = LoopClosing::creat(mapper_->map_,mapper_->getDatabase(),mapper_->getVocabulary(),false);
+    mpLoopCloser = LoopClosing::creat(mapper_->map_,mpVocabulary_,mpDatabase_,false);
 
 //    feature_tracker_->SetLoopClosing(mpLoopCloser); //还没什么用
     mapper_->SetLoopCloser(mpLoopCloser);
@@ -158,6 +167,9 @@ System::Status System::initialize()
 
     KeyFrame::Ptr kf0 = mapper_->map_->getKeyFrame(0);
     KeyFrame::Ptr kf1 = mapper_->map_->getKeyFrame(1);
+
+    cout<<"kf0 feature num:"<<kf0->featureNumber()<<endl;
+    cout<<"kf1 feature num:"<<kf1->featureNumber()<<endl;
 
     LOG_ASSERT(kf0 != nullptr && kf1 != nullptr) << "Can not find intial keyframes in map!";
 
@@ -408,7 +420,7 @@ bool System::createNewKeyFrame()
     if(c1 && (c2 || c3))
     {
         //! create new keyframe
-        KeyFrame::Ptr new_keyframe = KeyFrame::create(current_frame_);
+        KeyFrame::Ptr new_keyframe = KeyFrame::create(mpDatabase_, current_frame_);
         for(const Feature::Ptr &ft : fts)
         {
             if(ft->mpt_->isBad())

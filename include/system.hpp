@@ -13,6 +13,10 @@
 #include "depth_filter.hpp"
 #include "viewer.hpp"
 
+//#ifdef SSVO_DBOW_ENABLE
+#include <DBoW3/DBoW3.h>
+//#endif
+
 namespace ssvo {
 
 class System: public noncopyable
@@ -92,6 +96,10 @@ private:
     std::list<double > frame_timestamp_buffer_;
     std::list<Sophus::SE3d> frame_pose_buffer_;
     std::list<KeyFrame::Ptr> reference_keyframe_buffer_;
+
+    //! jh
+    DBoW3::Vocabulary *mpVocabulary_;
+    DBoW3::Database *mpDatabase_;
 };
 
 }// namespce ssvo

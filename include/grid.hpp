@@ -87,6 +87,7 @@ public:
 
     size_t getIndex(const T &element)
     {
+        std::cout<<"-------"<<std::endl;
         std::cerr << "Do not use the function[ size_t getCellID(T &element) ]! Please Specialized!" << std::endl;
         std::abort();
     }

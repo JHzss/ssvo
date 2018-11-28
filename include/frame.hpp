@@ -56,6 +56,8 @@ public:
 
     void getFeatures(std::vector<Feature::Ptr> &fts);
 
+    void getFeaturesAndSeeds(std::vector<Feature::Ptr> &fts);
+
     void getMapPoints(std::list<MapPoint::Ptr> &mpts);
 
     bool addFeature(const Feature::Ptr &ft);

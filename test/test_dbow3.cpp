@@ -65,12 +65,13 @@ int main(int argc, char *argv[])
     std::vector<cv::Mat > desps1(images.size());
 
     cv::Ptr<cv::ORB> orb = cv::ORB::create(500, 2, 1);
-    ssvo::BRIEF brief;
+    ssvo::BRIEF::Ptr brief = ssvo::BRIEF::create();
     double t0 = cv::getTickCount();
     for(int i = 0; i < images.size(); ++i)
     {
         orb->detect(images[i], kps[i]);
     }
+//    std::cout<<"size " <<kps[0][0].size<<" lev "<<kps[0][0].octave<<" ang "<<kps[0][0].angle<<std::endl;
 
     double t1 = cv::getTickCount();
     for(int i = 0; i < images.size(); ++i)
@@ -82,8 +83,8 @@ int main(int argc, char *argv[])
     for(int i = 0; i < images.size(); ++i)
     {
         std::vector<cv::Mat> imgPyr;
-        cv::buildPyramid(images[0], imgPyr, 0);
-        brief.compute(imgPyr, kps[i], desps1[i]);
+        cv::buildPyramid(images[0], imgPyr, 3);
+        brief->compute(imgPyr, kps[i], desps1[i]);
     }
 
     double t3 = cv::getTickCount();

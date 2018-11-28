@@ -138,6 +138,20 @@ void Frame::getFeatures(std::vector<Feature::Ptr>& fts)
         fts.push_back(it.second);
 }
 
+    void Frame::getFeaturesAndSeeds(std::vector<Feature::Ptr> &fts)
+    {
+        if(!fts.empty()) fts.clear();
+
+        std::lock_guard<std::mutex> lock(mutex_feature_);
+        std::lock_guard<std::mutex> lock1(mutex_seed_);
+        fts.reserve(mpt_fts_.size()+seed_fts_.size());
+        for(const auto &it : mpt_fts_)
+            fts.push_back(it.second);
+
+        for(const auto &it : seed_fts_)
+            fts.push_back(it.second);
+    }
+
 void Frame::getMapPoints(std::list<MapPoint::Ptr> &mpts)
 {
     if(!mpts.empty()) mpts.clear();

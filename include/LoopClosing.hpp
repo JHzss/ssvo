@@ -26,11 +26,9 @@
 
 #include "global.hpp"
 #include "keyframe.hpp"
-//#include "local_mapping.hpp"
 #include "map.hpp"
-//#include "ORBVocabulary.h"
-//#include "feature_tracker.hpp"
 #include "depth_filter.hpp"
+#include "config.hpp"
 //
 //#include "KeyFrameDatabase.h"
 //
@@ -40,6 +38,8 @@
 
 namespace ssvo {
 
+//class LocalMapper;
+
 class LoopClosing {
 public:
     typedef std::shared_ptr<LoopClosing> Ptr;
@@ -48,8 +48,8 @@ public:
 //    typedef map<KeyFrame*,g2o::Sim3,std::less<KeyFrame*>,
 //        Eigen::aligned_allocator<std::pair<const KeyFrame*, g2o::Sim3> > > KeyFrameAndPose;
 
-        static LoopClosing::Ptr creat(Map::Ptr pMap, DBoW3::Database pDB, DBoW3::Vocabulary pVoc,const bool bFixScale)
-        { return LoopClosing::Ptr(new LoopClosing(pMap, pDB, pVoc, bFixScale));}
+        static LoopClosing::Ptr creat(Map::Ptr pMap,DBoW3::Vocabulary *mpVocabulary_, DBoW3::Database *mpDatabase_, const bool bFixScale)
+        { return LoopClosing::Ptr(new LoopClosing(pMap,mpVocabulary_, mpDatabase_, bFixScale));}
 
         //    void SetTracker(Tracking* pTracker);
 //    void SetTracker(FeatureTracker::Ptr pTracker);
@@ -65,7 +65,7 @@ public:
         // Main function
         void Run();
 
-//    void InsertKeyFrame(KeyFrame *pKF);
+        // void InsertKeyFrame(KeyFrame *pKF);
         void InsertKeyFrame(KeyFrame::Ptr pKF);
 
         void RequestReset();
@@ -90,10 +90,18 @@ public:
 
         bool isRequiredStop();
 
+        std::vector<KeyFrame::Ptr> DetectLoopCandidates(KeyFrame::Ptr pKF, double minScore);
+
+        /**
+         * 计算关键帧的描述子和词袋向量
+         * @param keyframe 该关键帧
+         */
+        void addToDatabase(const KeyFrame::Ptr &keyframe);
+
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     private:
-        LoopClosing(Map::Ptr pMap, DBoW3::Database pDB, DBoW3::Vocabulary pVoc,const bool bFixScale);
+        LoopClosing(Map::Ptr pMap,DBoW3::Vocabulary *mpVocabulary_, DBoW3::Database *mpDatabase_, const bool bFixScale);
 
     protected:
 
@@ -126,9 +134,7 @@ public:
 //    FeatureTracker::Ptr mpTracker;
 
 //    KeyFrameDatabase* mpKeyFrameDB;
-        DBoW3::Database mpKeyFrameDB;
-//    ORBVocabulary* mpORBVocabulary;
-        DBoW3::Vocabulary mpORBVocabulary;
+
 
 //    LocalMapping *mpLocalMapper;
 //    LocalMapper::Ptr mpLocalMapper;
@@ -176,6 +182,15 @@ public:
 
         bool stop_require_;
         std::mutex mutex_stop_;
+
+    public:
+        DBoW3::Vocabulary *mpVocabulary_;
+        DBoW3::Database *mpDatabase_;
+
+        std::vector<KeyFrame::Ptr> KeyFrames;
+
+        std::vector<cv::Point2i> border_tl_;
+        std::vector<cv::Point2i> border_br_;
     };
 
 };

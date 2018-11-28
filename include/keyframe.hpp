@@ -32,18 +32,18 @@ public:
 
     const ImgPyr opticalImages() const = delete;    //! disable this function
 
-    inline static KeyFrame::Ptr create(const Frame::Ptr frame)
-    { return Ptr(new KeyFrame(frame)); }
+    inline static KeyFrame::Ptr create(DBoW3::Database *mpDatabase_, const Frame::Ptr frame)
+    { return Ptr(new KeyFrame(mpDatabase_,frame)); }
 
     void SetNotErase();
 
 //    void computeDescriptor(const BRIEF::Ptr &brief);
 
-    void computeBoW(const DBoW3::Vocabulary& vocabulary);
+    void computeBoW(const DBoW3::Vocabulary* vocabulary);
 
 private:
 
-    KeyFrame(const Frame::Ptr frame);
+    KeyFrame(DBoW3::Database *mpDatabase_, const Frame::Ptr frame);
 
     void addConnection(const KeyFrame::Ptr &kf, const int weight);
 
@@ -60,13 +60,17 @@ public:
     std::vector<Feature::Ptr> dbow_fts_;
     cv::Mat descriptors_;
 
+    std::vector<cv::Mat> descriptors_vec;
+
     DBoW3::BowVector bow_vec_;
 
     DBoW3::FeatureVector feat_vec_;
 
     unsigned int dbow_Id_;
 
-private:
+    DBoW3::Database* mpDatabase_;
+
+    private:
 
     std::map<KeyFrame::Ptr, int> connectedKeyFrames_;
 
@@ -75,6 +79,15 @@ private:
     bool isBad_;
 
     std::mutex mutex_connection_;
+
+public:
+    // Variables used by the keyframe database
+    uint64_t mnLoopQuery;
+    int mnLoopWords;
+    double mLoopScore;
+    uint64_t mnRelocQuery;
+    int mnRelocWords;
+    double mRelocScore;
 
 };
 

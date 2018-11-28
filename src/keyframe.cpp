@@ -6,8 +6,9 @@ namespace ssvo{
 
 uint64_t KeyFrame::next_id_ = 0;
 
-KeyFrame::KeyFrame(const Frame::Ptr frame):
-    Frame(frame->images(), next_id_++, frame->timestamp_, frame->cam_), frame_id_(frame->id_), isBad_(false)
+KeyFrame::KeyFrame(DBoW3::Database *mpDatabase_, const Frame::Ptr frame):
+    Frame(frame->images(), next_id_++, frame->timestamp_, frame->cam_), frame_id_(frame->id_), isBad_(false),mpDatabase_(mpDatabase_),
+    mnLoopQuery(0), mnLoopWords(0), mnRelocQuery(0), mnRelocWords(0)
 {
     mpt_fts_ = frame->features();
     setRefKeyFrame(frame->getRefKeyFrame());
@@ -193,8 +194,11 @@ void KeyFrame::setBad()
         orderedConnectedKeyFrames_.clear();
         mpt_fts_.clear();
         seed_fts_.clear();
+
+        // 删除逆向文件中的相关索引，清空对应的正向文件
+        (*mpDatabase_).eraseEntryId(dbow_Id_);
     }
-    // TODO change refKF
+
 }
 
 bool KeyFrame::isBad()
@@ -245,22 +249,19 @@ void KeyFrame::removeConnection(const KeyFrame::Ptr &kf)
 
     void KeyFrame::SetNotErase()
     {
-        std::lock_guard<std::mutex> lock(mutex_connection_);
+//        std::lock_guard<std::mutex> lock(mutex_connection_);
     }
 
-    void KeyFrame::computeBoW(const DBoW3::Vocabulary &vocabulary)
+    void KeyFrame::computeBoW(const DBoW3::Vocabulary* vocabulary)
     {
-        LOG_ASSERT(!descriptors_.empty()) << "Please use conputeDescriptor first!";
+        LOG_ASSERT(!descriptors_.empty()) << "Please use computeDescriptor first!";
         
         //todo change the descriptors_ from cv::Mat to std::vector<cv::Mat>
-        std::vector<cv::Mat > desps;
-        for(int i=0;i<descriptors_.rows;i++)
-        {
-            desps.push_back(descriptors_.row(i));
-        }
+        std::vector<cv::Mat > desps(descriptors_.rows);
+        for(int r=0;r<descriptors_.rows;r++) desps[r]=descriptors_.rowRange(r,r+1);
         
         if(bow_vec_.empty())
-            vocabulary.transform(desps, bow_vec_, feat_vec_, 4);
+            (*vocabulary).transform(desps, bow_vec_);
     }
 
 
