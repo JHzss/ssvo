@@ -7,7 +7,8 @@ namespace ssvo{
 uint64_t KeyFrame::next_id_ = 0;
 
 KeyFrame::KeyFrame(const Frame::Ptr frame):
-    Frame(frame->images(), next_id_++, frame->timestamp_, frame->cam_), frame_id_(frame->id_), isBad_(false)
+    Frame(frame->images(), next_id_++, frame->timestamp_, frame->cam_), frame_id_(frame->id_), isBad_(false), loop_query_(0),
+    notErase(false),toBeErase(false),GBA_KF_(0)
 {
     mpt_fts_ = frame->features();
     setRefKeyFrame(frame->getRefKeyFrame());
@@ -161,10 +162,43 @@ std::set<KeyFrame::Ptr> KeyFrame::getSubConnectedKeyFrames(int num)
     return sub_connected_keyframes;
 }
 
+void KeyFrame::setNotErase()
+{
+    std::unique_lock<std::mutex> lock(mutex_connection_);
+    notErase = true;
+}
+
+//! 这函数在闭环的时候常用，因为开始闭环的时候设了卡
+void KeyFrame::setErase()
+{
+    {
+        //todo 2 add loop detect finish condition
+        std::unique_lock<std::mutex> lock(mutex_connection_);
+        if(false)
+        {
+            notErase = false;
+        }
+    }
+    if(toBeErase)
+    {
+        setBad();
+    }
+}
+
 void KeyFrame::setBad()
 {
-    if(id_ == 0)
-        return;
+
+    {
+        std::unique_lock<std::mutex> lock(mutex_connection_);
+        if(id_ == 0)
+            return;
+        //! 这里是如果想删除，就等一等，设置toBeErase变量，等闭环结束之后会调用keyframe的seterase，如果想删除的话那会再删除
+        if(notErase)
+        {
+            toBeErase = true;
+            return;
+        }
+    }
 
     std::cout << "The keyframe " << id_ << " was set to be earased." << std::endl;
 
@@ -221,12 +255,19 @@ void KeyFrame::addConnection(const KeyFrame::Ptr &kf, const int weight)
 
 void KeyFrame::updateOrderedConnections()
 {
+    int max = 0;
     std::lock_guard<std::mutex> lock(mutex_connection_);
     orderedConnectedKeyFrames_.clear();
     for(const auto &connect : connectedKeyFrames_)
     {
         auto it = orderedConnectedKeyFrames_.lower_bound(connect.second);
         orderedConnectedKeyFrames_.insert(it, std::pair<int, KeyFrame::Ptr>(connect.second, connect.first));
+
+        if(connect.second > max)
+        {
+            max = connect.second;
+            parent_ = connect.first;
+        }
     }
 }
 
@@ -241,6 +282,45 @@ void KeyFrame::removeConnection(const KeyFrame::Ptr &kf)
     }
 
     updateOrderedConnections();
+}
+
+std::vector<int > KeyFrame::getFeaturesInArea(const double &x, const double &y, const double &r)
+{
+    std::vector<int > index;
+
+    for(int i = 0; i < featuresInBow.size(); ++i)
+    {
+        Feature::Ptr it = featuresInBow[i];
+        if( it->px_[0] < (x-r) || it->px_[0] > (x+r) || it->px_[1] < (y-r) || it->px_[1] > (y + r))
+            continue;
+        if(((it->px_[0]- x)*(it->px_[0]- x)+(it->px_[1]- y)*(it->px_[1]- y)) < (double)r*r)
+            index.push_back(i);
+    }
+    return index;
+}
+
+void KeyFrame::addLoopEdge(KeyFrame::Ptr pKF)
+{
+    std::unique_lock<std::mutex > lock(mutex_connection_);
+    notErase = true;
+    loopEdges_.insert(pKF);
+}
+
+int KeyFrame::getWight(KeyFrame::Ptr pKF)
+{
+    std::lock_guard<std::mutex> lock(mutex_connection_);
+    return connectedKeyFrames_[pKF];
+}
+KeyFrame::Ptr KeyFrame::getParent()
+{
+    return parent_;
+}
+
+std::set<KeyFrame::Ptr> KeyFrame::getLoopEdges()
+{
+    std::lock_guard<std::mutex> lock(mutex_connection_);
+    return loopEdges_;
+
 }
 
 }

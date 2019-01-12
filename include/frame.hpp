@@ -56,7 +56,11 @@ public:
 
     std::vector<Feature::Ptr> getFeatures();
 
+
     std::vector<MapPoint::Ptr> getMapPoints();
+
+    //! keep the fts and mappoints order right
+    void getFeaturesAndMapPoints(std::vector<Feature::Ptr> &features, std::vector<MapPoint::Ptr> &mappoints);
 
     bool addFeature(const Feature::Ptr &ft);
 
@@ -112,6 +116,9 @@ public:
     SE3d optimal_Tcw_;//! for optimization
 
     double disparity_;//! for depth filter
+
+    SE3d beforeGBA_Tcw_;
+    SE3d beforeUpdate_Tcw_;
 
 protected:
 

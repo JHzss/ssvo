@@ -12,6 +12,9 @@
 #include "depth_filter.hpp"
 #include "viewer.hpp"
 
+#ifdef SSVO_DBOW_ENABLE
+#include "loop_closure.hpp"
+#endif
 namespace ssvo {
 
 class System: public noncopyable
@@ -75,6 +78,9 @@ private:
     DepthFilter::Ptr depth_filter_;
     LocalMapper::Ptr mapper_;
 
+#ifdef SSVO_DBOW_ENABLE
+    LoopClosure::Ptr loop_closure_;
+#endif
     Viewer::Ptr viewer_;
 
     std::thread viewer_thread_;
@@ -86,6 +92,7 @@ private:
     KeyFrame::Ptr last_keyframe_;
 
     double time_;
+    uint64_t loopId_;
 
     std::list<double > frame_timestamp_buffer_;
     std::list<Sophus::SE3d> frame_pose_buffer_;

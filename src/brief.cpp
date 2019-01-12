@@ -266,8 +266,8 @@ static int bit_pattern_31_[256*4] =
         -1,-6, 0,-11/*mean (0.127148), correlation (0.547401)*/
     };
 
-BRIEF::BRIEF(float scale_factor, int nlevels, int height, int width) :
-    scale_factor_(scale_factor), nlevels_(nlevels), height_(height), width_(width)
+BRIEF::BRIEF(float scale_factor, int nlevels)://, int height, int width) :
+    scale_factor_(scale_factor), nlevels_(nlevels)//, height_(height), width_(width)
 {
     const int npoints = 512;
     const cv::Point* pattern0 = (const cv::Point*)bit_pattern_31_;
@@ -300,19 +300,19 @@ BRIEF::BRIEF(float scale_factor, int nlevels, int height, int width) :
         inv_scale_factors_[i] = 1.0f / scale_factors_[i];
     }
 
-    border_tl_.resize(nlevels);
-    border_br_.resize(nlevels);
-
-    float cur_scale = 1.0;
-
-    for(int i = 0; i < nlevels; i++)
-    {
-        border_tl_[i].x = BRIEF::EDGE_THRESHOLD;
-        border_tl_[i].y = BRIEF::EDGE_THRESHOLD;
-        border_br_[i].x = width/cur_scale - BRIEF::EDGE_THRESHOLD;
-        border_br_[i].y = height/cur_scale - BRIEF::EDGE_THRESHOLD;
-        cur_scale *= scale_factor;
-    }
+//    border_tl_.resize(nlevels);
+//    border_br_.resize(nlevels);
+//
+//    float cur_scale = 1.0;
+//
+//    for(int i = 0; i < nlevels; i++)
+//    {
+//        border_tl_[i].x = BRIEF::EDGE_THRESHOLD;
+//        border_tl_[i].y = BRIEF::EDGE_THRESHOLD;
+//        border_br_[i].x = width/cur_scale - BRIEF::EDGE_THRESHOLD;
+//        border_br_[i].y = height/cur_scale - BRIEF::EDGE_THRESHOLD;
+//        cur_scale *= scale_factor;
+//    }
 
 }
 
@@ -387,7 +387,7 @@ void BRIEF::compute(const cv::KeyPoint& kpt, const cv::Mat& img, const cv::Point
 }
 
 
-void BRIEF::compute(const std::vector<cv::Mat> &images, const std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors) const
+void BRIEF::compute(const std::vector<cv::Mat> &images, std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors) const
 {
     const size_t nlevels = images.size();
     std::vector<cv::Mat> image_pyramid_border(nlevels);
@@ -402,8 +402,11 @@ void BRIEF::compute(const std::vector<cv::Mat> &images, const std::vector<cv::Ke
 
         image_pyramid_border[i] = image_border(cv::Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, images[i].cols, images[i].rows));
 
+        cv::Mat image_border_gauss = cv::Mat(image_border.size(), image_border.type());
+
         // preprocess the resized image
-        cv::GaussianBlur(image_pyramid_border[i], image_pyramid_border_gauss[i], cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+        cv::GaussianBlur(image_border, image_border_gauss, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+        image_pyramid_border_gauss[i] = image_border_gauss(cv::Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, images[i].cols, images[i].rows));
     }
 
 
@@ -414,6 +417,7 @@ void BRIEF::compute(const std::vector<cv::Mat> &images, const std::vector<cv::Ke
         cv::KeyPoint keypoint = keypoints[i];
         keypoint.pt *= inv_scale_factors_.at(keypoint.octave);
         keypoint.angle = IC_Angle(image_pyramid_border[keypoint.octave], keypoint.pt, umax_);
+        keypoints[i].angle = keypoint.angle;
 //
 //        if(keypoint.octave>0)
 //        {
@@ -433,25 +437,29 @@ void BRIEF::compute(const std::vector<cv::Mat> &images, const std::vector<cv::Ke
     }
 }
 
-bool BRIEF::checkBorder(const double x, const double y,const int level, const bool bottom_level)
-{
-    double x_ = x ;
-    double y_ = y ;
-    if(bottom_level)
-    {
-        double scale = 1 >> level;
-        x_ = x * scale;
-        y_ = y * scale;
-    }
-
-    if(x_ <= border_tl_[level].x ||
-       y_ <= border_tl_[level].y ||
-       x_ >= border_br_[level].x ||
-       y_ >= border_br_[level].y)
-        return false;
-    else
-        return true;
-}
+//bool BRIEF::checkBorder(const double x, const double y,const int level, const bool bottom_level)
+//{
+//    double x_ = x ;
+//    double y_ = y ;
+//    if(bottom_level)
+//    {
+//        double scale = 1;
+//        for(int j = 0; j<level; j++)
+//        {
+//            scale /= scale_factor_;
+//        }
+//        x_ = x * scale;
+//        y_ = y * scale;
+//    }
+//
+//    if(x_ <= border_tl_[level].x ||
+//       y_ <= border_tl_[level].y ||
+//       x_ >= border_br_[level].x ||
+//       y_ >= border_br_[level].y)
+//        return false;
+//    else
+//        return true;
+//}
 }
 
 

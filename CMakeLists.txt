@@ -5,7 +5,7 @@ project(ssvo)
 ## User's option
 ## -----------------------
 option(SSVO_TEST_ENABLE "If build the test files." ON)
-option(SSVO_DBOW_ENABLE "If use the DBoW library." OFF)
+option(SSVO_DBOW_ENABLE "If use the DBoW library." ON)
 option(SSVO_TRACE_ENABLE "If use the time tracing." ON)
 message(STATUS "Test Enable    : "   ${SSVO_TEST_ENABLE})
 message(STATUS "DBoW Enable    : "   ${SSVO_DBOW_ENABLE})
@@ -151,6 +151,7 @@ list(APPEND SOURCEFILES
     src/viewer.cpp
     src/brief.cpp
     src/sim3_solver.cpp
+	src/loop_closure.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${SOURCEFILES})
@@ -206,6 +207,9 @@ endif(SSVO_TEST_ENABLE)
 ## -----------------------
 add_executable(monoVO_euroc demo/monoVO_euroc.cpp)
 target_link_libraries(monoVO_euroc ${PROJECT_NAME})
+
+add_executable(monoVO_tum demo/monoVO_tum.cpp)
+target_link_libraries(monoVO_tum ${PROJECT_NAME})
 
 add_executable(monoVO_live demo/monoVO_live.cpp)
 target_link_libraries(monoVO_live ${PROJECT_NAME})

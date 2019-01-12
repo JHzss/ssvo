@@ -22,12 +22,16 @@
 
 #include <opencv2/core.hpp>
 #include <Eigen/Dense>
+#include <Eigen/Core>
 #include <sophus/se3.hpp>
+#include <sophus/sim3.hpp>
+#include <sophus/rxso3.hpp>
 #include <glog/logging.h>
 
 #include<Eigen/StdVector>
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Matrix2d)
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Matrix3d)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Matrix4d)
 
 using namespace Eigen;
 using Sophus::SE3d;

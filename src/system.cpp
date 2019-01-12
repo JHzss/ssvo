@@ -13,7 +13,7 @@ TimeTracing::Ptr sysTrace = nullptr;
 
 System::System(std::string config_file, std::string calib_flie) :
     stage_(STAGE_INITALIZE), status_(STATUS_INITAL_RESET),
-    last_frame_(nullptr), current_frame_(nullptr), reference_keyframe_(nullptr)
+    last_frame_(nullptr), current_frame_(nullptr), reference_keyframe_(nullptr),loopId_(0)
 {
     LOG_ASSERT(!calib_flie.empty()) << "Empty Calibration file input!!!";
     LOG_ASSERT(!config_file.empty()) << "Empty Config file input!!!";
@@ -51,7 +51,23 @@ System::System(std::string config_file, std::string calib_flie) :
     fast_detector_ = FastDetector::create(width, height, image_border, nlevel, grid_size, grid_min_size, fast_max_threshold, fast_min_threshold);
     feature_tracker_ = FeatureTracker::create(width, height, 20, image_border, true);
     initializer_ = Initializer::create(fast_detector_, true);
+#ifdef SSVO_DBOW_ENABLE
+    std::string voc_dir = Config::DBoWDirectory();
+
+    LOG_ASSERT(!voc_dir.empty()) << "Please check the config file! The DBoW directory is not set!";
+    DBoW3::Vocabulary* vocabulary = new DBoW3::Vocabulary(voc_dir);
+    DBoW3::Database* database= new DBoW3::Database(*vocabulary, true, 4);
+
+    mapper_ = LocalMapper::create(vocabulary, database, fast_detector_, true, false);
+
+    loop_closure_ = LoopClosure::creat(vocabulary, database);
+    loop_closure_->startMainThread();
+
+    mapper_->setLoopCloser(loop_closure_);
+    loop_closure_->setLocalMapper(mapper_);
+#else
     mapper_ = LocalMapper::create(fast_detector_, true, false);
+#endif
     DepthFilter::Callback depth_fliter_callback = std::bind(&LocalMapper::createFeatureFromSeed, mapper_, std::placeholders::_1);
     depth_filter_ = DepthFilter::create(fast_detector_, depth_fliter_callback, true);
     viewer_ = Viewer::create(mapper_->map_, cv::Size(width, height));
@@ -61,8 +77,9 @@ System::System(std::string config_file, std::string calib_flie) :
 
     time_ = 1000.0/fps;
 
-    options_.min_kf_disparity = 100;//MIN(Config::imageHeight(), Config::imageWidth())/5;
-    options_.min_ref_track_rate = 0.7;
+    options_.min_kf_disparity = 50;//MIN(Config::imageHeight(), Config::imageWidth())/5;
+    options_.min_ref_track_rate = 0.9;
+
 
     //! LOG and timer for system;
     TimeTracing::TraceNames time_names;
@@ -151,7 +168,7 @@ System::Status System::initialize()
 
     LOG_ASSERT(kf0 != nullptr && kf1 != nullptr) << "Can not find intial keyframes in map!";
 
-    Optimizer::globleBundleAdjustment(mapper_->map_, 20, true);
+    Optimizer::globleBundleAdjustment(mapper_->map_, 20, 0, true);
 
     LOG(WARNING) << "[System] End of two-view BA";
 
@@ -169,6 +186,16 @@ System::Status System::initialize()
 
 System::Status System::tracking()
 {
+    std::unique_lock<std::mutex> lock(mapper_->map_->mutex_update_);
+    //! loop closure need
+    if(loop_closure_->update_finish_ == true)
+    {
+        KeyFrame::Ptr ref = last_frame_->getRefKeyFrame();
+        SE3d Tlr = last_frame_->Tcw()* ref->beforeUpdate_Tcw_.inverse();
+        last_frame_->setTcw( Tlr * ref->Tcw() );
+        loop_closure_->update_finish_ = false;
+    }
+
     current_frame_->setRefKeyFrame(reference_keyframe_);
 
     //! track seeds
@@ -305,6 +332,9 @@ void System::calcLightAffine()
 
 bool System::createNewKeyFrame()
 {
+    if(mapper_->isRequiredStop())
+        return false;
+
     std::map<KeyFrame::Ptr, int> overlap_kfs = current_frame_->getOverLapKeyFrames();
 
     std::vector<Feature::Ptr> fts = current_frame_->getFeatures();
@@ -349,7 +379,7 @@ bool System::createNewKeyFrame()
     Vector3d tran = T_cur_from_ref.translation();
     double dist1 = tran.dot(tran);
     double dist2 = 0.01 * (T_cur_from_ref.rotationMatrix() - Matrix3d::Identity()).norm();
-    if(dist1+dist2  < 0.01 * median_depth)
+    if(dist1+dist2  < 0.005 * median_depth)
         c1 = false;
 
     //! check disparity

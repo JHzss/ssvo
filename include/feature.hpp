@@ -25,6 +25,11 @@ public:
     std::shared_ptr<MapPoint> mpt_;
     std::shared_ptr<Seed> seed_;
 
+    double angle;
+#ifdef SSVO_DBOW_ENABLE
+    cv::Mat descriptors_; //! the descriptor belong to this frame
+#endif
+
     inline static Ptr create(const Vector2d &px, const Vector3d &fn, int level, const std::shared_ptr<MapPoint> &mpt)
     {return std::make_shared<Feature>(Feature(px, fn, level, mpt));}
 
@@ -37,20 +42,20 @@ public:
 private:
 
     Feature(const Vector2d &px, const Vector3d &fn, const int level, const std::shared_ptr<MapPoint> &mpt):
-        px_(px), fn_(fn), level_(level), mpt_(mpt), seed_(nullptr)
+        px_(px), fn_(fn), level_(level), mpt_(mpt), seed_(nullptr), angle(-1)
     {
         assert(fn[2] == 1);
         assert(mpt);
     }
 
     Feature(const Vector2d &px, const std::shared_ptr<MapPoint> &mpt):
-        px_(px), fn_(0,0,0), level_(0), mpt_(mpt), seed_(nullptr)
+        px_(px), fn_(0,0,0), level_(0), mpt_(mpt), seed_(nullptr), angle(-1)
     {
         assert(mpt);
     }
 
     Feature(const Vector2d &px, int level, const std::shared_ptr<Seed> &seed):
-        px_(px), fn_(0,0,0), level_(level), mpt_(nullptr), seed_(seed)
+        px_(px), fn_(0,0,0), level_(level), mpt_(nullptr), seed_(seed), angle(-1)
     {
     }
 

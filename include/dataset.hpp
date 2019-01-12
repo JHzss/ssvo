@@ -67,6 +67,19 @@ public:
         return true;
     }
 
+    //! used for some TUM dataset
+    bool readItemByIndex(size_t index, std::string &rgb_image, double &timestamp) const
+    {
+        if(index >= N)
+        {
+            std::cerr << " Index(" << index << ") is out of scape, max should be (0~" << N - 1 << ")";
+            return false;
+        }
+        rgb_image = rgb_images_[index];
+        timestamp = timestamps_[index];
+        return true;
+    }
+
     bool readItemWithGroundTruth(size_t index, std::string &rgb_image, std::string &depth_image, double &timestamp, std::vector<double> &ground_truth) const
     {
         if(!readItemByIndex(index, rgb_image, depth_image, timestamp))

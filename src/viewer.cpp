@@ -42,7 +42,7 @@ void Viewer::run()
     const int WIN_WIDTH = 1280;
     const int WIN_HEIGHT = 720;
     const int UI_WIDTH = 160;
-    const int UI_HEIGHT = 160;
+    const int UI_HEIGHT = 200;
     const int IMAGE_WIDTH = UI_HEIGHT *image_size_.width/image_size_.height;
     const int IMAGE_HEIGHT = UI_HEIGHT;
 
@@ -58,6 +58,7 @@ void Viewer::run()
     pangolin::Var<bool> menu_follow_camera("menu.Follow Camera", true, true);
     pangolin::Var<bool> menu_show_trajectory("menu.Show Trajectory", true, true);
     pangolin::Var<bool> menu_show_keyframe("menu.Show KeyFrame", true, true);
+    pangolin::Var<bool> menu_show_keyframetraj("menu.Show KFtraj", true,true);
     pangolin::Var<bool> menu_show_connections("menu.Connections", true, true);
     pangolin::Var<bool> menu_show_current_connections("menu.Connections_cur", true, true);
 
@@ -68,6 +69,7 @@ void Viewer::run()
     bool following_camera = true;
     bool show_trajectory = true;
     bool show_keyframe = true;
+    bool show_keyframetraj = true;
     bool show_connections = true;
     bool show_current_connections = true;
     int trajectory_duration = -1;
@@ -109,6 +111,7 @@ void Viewer::run()
         following_camera = menu_follow_camera.Get();
         show_trajectory = menu_show_trajectory.Get();
         show_keyframe = menu_show_keyframe.Get();
+        show_keyframetraj = menu_show_keyframetraj.Get();
         show_connections = menu_show_connections.Get();
         show_current_connections = menu_show_current_connections.Get();
 
@@ -144,6 +147,9 @@ void Viewer::run()
 
         if(show_trajectory)
             drawTrajectory(trajectory_duration);
+
+        if(show_keyframetraj)
+            drawKfTraj(map_);
 
         if(frame)
             drawCurrentFrame(frame->pose().matrix(), cv::Scalar(0.0, 0.0, 1.0));
@@ -356,6 +362,30 @@ void Viewer::drawTrajectory(int frame_num)
         glVertex3f((float)(*itr)[0], (float)(*itr)[1], (float)(*itr)[2]);
     }
     glEnd();
+}
+
+void Viewer::drawKfTraj(Map::Ptr &map)
+{
+    std::lock_guard<std::mutex> lock(mutex_frame_);
+    float color[3] = {0,0,1};
+    glColor3f(color[0],color[1],color[2]);
+    glLineWidth(2);
+
+    glBegin(GL_LINE_STRIP);
+
+
+    std::vector<KeyFrame::Ptr> kfs = map->getAllKeyFrames();
+
+    std::sort(kfs.begin(),kfs.end(),[](KeyFrame::Ptr a,KeyFrame::Ptr b)->bool{ return a->id_>b->id_;});
+
+    for(const KeyFrame::Ptr &kf : kfs)
+    {
+        Vector3f O1 = kf->pose().translation().cast<float>();
+        glVertex3f((float)O1[0], (float)O1[1], (float)O1[2]);
+
+    }
+    glEnd();
+
 }
 
 }

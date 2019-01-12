@@ -105,6 +105,9 @@ private:
     const int min_threshold_;
     int threshold_;
 
+    //! 不能删除。多个线程用到了特征提取
+    std::mutex mutex_fast_detector_;
+
     std::vector<FastGrid> detect_grids_;
 
     std::vector<Corners> corners_in_levels_;

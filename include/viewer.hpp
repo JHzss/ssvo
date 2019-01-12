@@ -45,6 +45,8 @@ private:
 
     void drawTrajectory(int frame_num = -1);
 
+    void drawKfTraj(Map::Ptr &map);
+
 private:
 
     std::shared_ptr<std::thread> pongolin_thread_;
@@ -56,6 +58,7 @@ private:
     cv::Size image_size_;
 
     std::list<Vector3d, aligned_allocator<Vector3d> > frame_trajectory_;
+    std::list<Vector3d, aligned_allocator<Vector3d> > kf_trajectory_;
 
     float map_point_size;
     float key_frame_size;

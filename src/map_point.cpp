@@ -9,7 +9,8 @@ const double MapPoint::log_level_factor_ = log(2.0f);
 
 MapPoint::MapPoint(const Vector3d &p) :
         id_(next_id_++), last_structure_optimal_(0), pose_(p), type_(SEED),
-        min_distance_(0.0), max_distance_(0.0), refKF_(nullptr), found_cunter_(1), visiable_cunter_(1)
+        min_distance_(0.0), max_distance_(0.0), refKF_(nullptr), found_cunter_(1), visiable_cunter_(1),
+        loop_id_(0),mnCorrectedByKF(0),mnCorrectedReference(0),GBA_KF_(0)
 {
 }
 
@@ -71,7 +72,7 @@ void MapPoint::addObservation(const KeyFrame::Ptr &kf, const Feature::Ptr &ft)
 }
 
 //! it do not change the connections of keyframe
-bool MapPoint::fusion(const MapPoint::Ptr &mpt)
+bool MapPoint::fusion(const MapPoint::Ptr &mpt, const bool loop)
 {
     const auto obs = mpt->getObservations();
     bool update = false;
@@ -90,7 +91,49 @@ bool MapPoint::fusion(const MapPoint::Ptr &mpt)
         }
     }
 
+    if(!loop)
+        mpt->setBad();
+
+    if(update)
+        updateViewAndDepth();
+
+    return true;
+}
+
+bool MapPoint::replace(const MapPoint::Ptr &mpt)
+{
+    if(this->id_ == mpt->id_)
+        return false;
+    const auto obs = mpt->getObservations();
+    bool update = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_obs_);
+        found_cunter_ += mpt->getFound();
+        visiable_cunter_ += mpt->getVisible();
+
+        std::vector<KeyFrame::Ptr > kfs_;
+        for(const auto &it : obs)
+        {
+            if(obs_.count(it.first) == 0)
+            {
+                obs_.insert(it);
+                update = true;
+            }
+
+            KeyFrame::Ptr kf = it.first;
+            Feature::Ptr ft = kf->getFeatureByMapPoint(mpt);
+            kf->removeMapPoint(mpt);
+//            ft->mpt_ = this;
+            kf->addFeature(ft);
+            kfs_.emplace_back(kf);
+        }
+
+        for(auto kf:kfs_)
+            kf->updateConnections();
+    }
+
     mpt->setBad();
+    //todo 设置替换flag
 
     if(update)
         updateViewAndDepth();
@@ -292,6 +335,10 @@ bool MapPoint::getCloseViewObs(const Frame::Ptr &frame, KeyFrame::Ptr &keyframe,
         std::lock_guard<std::mutex> lock(mutex_obs_);
         if(type_ == BAD)
             return false;
+        //todo remove
+        if (obs_.empty())
+            return false;
+
         // TODO 这里可能还有问题，bad 的 mpt没有被删除？
         LOG_ASSERT(!obs_.empty()) << " Map point is invalid!";
         obs = obs_;
@@ -336,6 +383,33 @@ bool MapPoint::getCloseViewObs(const Frame::Ptr &frame, KeyFrame::Ptr &keyframe,
     level = predictScale(dist, frame->max_level_);
 
     return true;
+}
+
+std::vector<cv::Mat > MapPoint::getDescriptors()
+{
+    std::vector<cv::Mat > descriptors;
+
+    std::lock_guard<std::mutex> lock(mutex_obs_);
+    if(type_ == BAD)
+        return cv::Mat();
+    // TODO 这里可能还有问题，bad 的 mpt没有被删除？
+    LOG_ASSERT(!obs_.empty()) << " Map point is invalid!";
+
+    for(std::pair<KeyFrame::Ptr, Feature::Ptr> item : obs_)
+    {
+        if(item.second->angle != -1)
+            descriptors.emplace_back(item.second->descriptors_);
+    }
+
+    return descriptors;
+}
+
+Vector3d MapPoint::getObsVec()
+{
+    std::lock_guard<std::mutex> lock(mutex_obs_);
+    Vector3d ret = obs_dir_;
+    ret.normalize();
+    return ret;
 }
 
 }

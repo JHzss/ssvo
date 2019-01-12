@@ -99,6 +99,8 @@ FastDetector::FastDetector(int width, int height, int border, int nlevels,
 size_t FastDetector::detect(const ImgPyr &img_pyr, Corners &new_corners, const Corners &exist_corners,
                          const int N, const double eigen_threshold)
 {
+    std::unique_lock<std::mutex> lock(mutex_fast_detector_);
+
     LOG_ASSERT(img_pyr.size() == nlevels_) << "Unmatch size of ImgPyr(" << img_pyr.size() << ") with nlevel(" << nlevels_ << ")";
     LOG_ASSERT(img_pyr[0].size() == cv::Size(width_, height_)) << "Error cv::Mat size: " << img_pyr[0].size();
 

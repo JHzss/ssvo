@@ -150,6 +150,16 @@ std::vector<MapPoint::Ptr> Frame::getMapPoints()
     return mpts;
 }
 
+void Frame::getFeaturesAndMapPoints(std::vector<Feature::Ptr> &features, std::vector<MapPoint::Ptr> &mappoints)
+{
+    std::lock_guard<std::mutex> lock(mutex_feature_);
+    for(const auto &it : mpt_fts_)
+    {
+        features.push_back(it.second);
+        mappoints.push_back(it.first);
+    }
+}
+
 bool Frame::addFeature(const Feature::Ptr &ft)
 {
     LOG_ASSERT(ft->mpt_ != nullptr) << " The feature is invalid with empty mappoint!";

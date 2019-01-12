@@ -8,18 +8,28 @@
 #include "keyframe.hpp"
 #include "map.hpp"
 #include "global.hpp"
+//#include "loop_closure.hpp"
 
 namespace ssvo {
+
+//class LoopClosure;
 
 class Optimizer: public noncopyable
 {
 public:
+    typedef std::map<KeyFrame::Ptr,Sophus::Sim3d ,std::less<KeyFrame::Ptr>,
+            Eigen::aligned_allocator<std::pair<const KeyFrame::Ptr, Sophus::Sim3d> > > KeyFrameAndPose;
 
-    static void globleBundleAdjustment(const Map::Ptr &map, int max_iters, bool report=false, bool verbose=false);
+    static void globleBundleAdjustment(const Map::Ptr &map, int max_iters,const uint64_t nLoopKF = 0, bool report=false, bool verbose=false);
 
     static void motionOnlyBundleAdjustment(const Frame::Ptr &frame, bool use_seeds, bool reject=false, bool report=false, bool verbose=false);
 
     static void localBundleAdjustment(const KeyFrame::Ptr &keyframe, std::list<MapPoint::Ptr> &bad_mpts, int size=10, int min_shared_fts=50, bool report=false, bool verbose=false);
+
+    static int optimizeSim3(KeyFrame::Ptr pKF1, KeyFrame::Ptr pKF2, std::vector<MapPoint::Ptr> &vpMatches1,
+                                  Sophus::Sim3d &S12, const float th2, const bool bFixScale);
+    static void OptimizeEssentialGraph(Map::Ptr pMap, KeyFrame::Ptr pLoopKF, KeyFrame::Ptr pCurKF, KeyFrameAndPose &NonCorrectedSim3, KeyFrameAndPose &CorrectedSim3,
+                                             const std::map<KeyFrame::Ptr, std::set<KeyFrame::Ptr> > &LoopConnections, const bool &bFixScale = false);
 
 //    static void localBundleAdjustmentWithInvDepth(const KeyFrame::Ptr &keyframe, std::list<MapPoint::Ptr> &bad_mpts, int size=10, bool report=false, bool verbose=false);
 
@@ -329,6 +339,194 @@ private:
 
 };
 
+//!**********************************************************************************************************************************************
+
+struct IntrinsicReprojErrorOnlyPose
+{
+    IntrinsicReprojErrorOnlyPose(double observed_x, double observed_y, double* pos,int level,KeyFrame::Ptr pKF)
+    {
+        obs_x_ = observed_x;
+        obs_y_ = observed_y;
+        Mp_Pos_ << pos[0], pos[1], pos[2];
+        level_ = level;
+        pKF_ = pKF;
+    }
+
+    bool operator()(const double* const camera, double* residuals) const
+    {
+        Eigen::Quaterniond q = Eigen::Quaterniond(camera[3],camera[0],camera[1],camera[2]);
+        Vector3d t = Vector3d(camera[4],camera[5],camera[6]);
+
+        //todo 检查这里的问题
+        if(q.squaredNorm()<0.001||q.squaredNorm()>1000)
+            q.normalize();
+        std::cout<<"q.squaredNorm(): "<<q.squaredNorm()<<std::endl;
+
+        Sophus::Sim3d Sim3_cam(q,t);
+        Vector3d Mp_cam = Sim3_cam * Mp_Pos_;
+        Vector2d px = pKF_->cam_->project(Mp_cam);
+
+        residuals[0] = (obs_x_ - px[0])/sqrt(1<<level_);
+        residuals[1] = (obs_y_ - px[1])/sqrt(1<<level_);
+        return true;
+    }
+
+    double obs_x_, obs_y_;
+    Vector3d Mp_Pos_;
+    int level_;
+    KeyFrame::Ptr pKF_;
+};
+
+struct IntrinsicReprojErrorOnlyPoseInvSim3
+{
+    IntrinsicReprojErrorOnlyPoseInvSim3(double observed_x, double observed_y, double* pos, int level,KeyFrame::Ptr pKF)
+    {
+        obs_x_ = observed_x;
+        obs_y_ = observed_y;
+        Mp_Pos_<< pos[0], pos[1], pos[2];
+        level_ = level;
+        pKF_ =pKF;
+    }
+
+    bool operator()(const double* const camera, double* residuals) const
+    {
+
+        Eigen::Quaterniond q = Eigen::Quaterniond(camera[3],camera[0],camera[1],camera[2]);
+        Vector3d t = Vector3d(camera[4],camera[5],camera[6]);
+
+        //todo 检查这里的问题
+        if(q.squaredNorm()<0.001||q.squaredNorm()>1000)
+            q.normalize();
+        std::cout<<"q.squaredNorm(): "<<q.squaredNorm()<<std::endl;
+
+        Sophus::Sim3d Sim3_k12(q,t);
+
+        Vector3d Mp_cam = Mp_Pos_;
+        Mp_cam = Sim3_k12.inverse() * Mp_cam;
+
+        Vector2d px = pKF_->cam_->project(Mp_cam);
+
+        //! add weigh
+        residuals[0] = (px[0] - obs_x_)/sqrt(1<<level_);
+        residuals[1] = (px[1] - obs_y_)/sqrt(1<<level_);
+
+        return true;
+    }
+
+    double obs_x_, obs_y_;
+    Vector3d Mp_Pos_;
+    int level_;
+    KeyFrame::Ptr pKF_;
+};
+
+struct ReprojErrorOnlyPose
+{
+    ReprojErrorOnlyPose(double observed_x, double observed_y, double* pos, int level,KeyFrame::Ptr pKF):
+            intrinsicReprojErrorOnlyPose_(new ceres::NumericDiffCostFunction<IntrinsicReprojErrorOnlyPose,ceres::CENTRAL,2,7>(
+            new IntrinsicReprojErrorOnlyPose(observed_x,observed_y,pos,level,pKF)))
+    {}
+
+    template <typename T> bool operator()(const T* const camera, T* residuals) const
+    {
+        return intrinsicReprojErrorOnlyPose_(camera,residuals);
+    }
+
+    static ceres::CostFunction* Create(double observed_x, double observed_y, double* pos, int level,KeyFrame::Ptr pKF) {
+        return (new ceres::AutoDiffCostFunction<ReprojErrorOnlyPose, 2, 7>(
+                new ReprojErrorOnlyPose(observed_x, observed_y, pos, level,pKF)));
+    }
+
+private:
+    ceres::CostFunctionToFunctor<2,7> intrinsicReprojErrorOnlyPose_;
+};
+
+struct ReprojErrorOnlyPoseInvSim3
+{
+    ReprojErrorOnlyPoseInvSim3(double observed_x, double observed_y, double* pos, int level,KeyFrame::Ptr pKF):
+            intrinsicReprojErrorOnlyPoseInvSim3_(new ceres::NumericDiffCostFunction<IntrinsicReprojErrorOnlyPoseInvSim3,ceres::CENTRAL,2,7>(
+            new IntrinsicReprojErrorOnlyPoseInvSim3(observed_x, observed_y, pos, level,pKF)))
+    {}
+
+    template <typename T> bool operator()(const T* const camera, T* residuals) const
+    {
+        return intrinsicReprojErrorOnlyPoseInvSim3_(camera,residuals);
+    }
+
+    static ceres::CostFunction* Create(double observed_x, double observed_y, double* pos, int level,KeyFrame::Ptr pKF) {
+        return (new ceres::AutoDiffCostFunction<ReprojErrorOnlyPoseInvSim3, 2, 7>(
+                new ReprojErrorOnlyPoseInvSim3(observed_x, observed_y, pos, level,pKF)));
+    }
+
+private:
+    ceres::CostFunctionToFunctor<2,7> intrinsicReprojErrorOnlyPoseInvSim3_;
+};
+
+struct IntrinsicRelativeSim3Error
+{
+    IntrinsicRelativeSim3Error(double* obs)
+    {
+        for (int i = 0; i < 7; ++i)
+        {
+            mObs[i] = obs[i];
+        }
+    }
+
+    bool operator()(const double* const camera1, const double* const camera2, double* residual) const
+    {
+        double camera21[7];
+        for (int i = 0; i < 7; ++i)
+            camera21[i] = mObs[i];
+
+        Eigen::Quaterniond qk1 = Eigen::Quaterniond(camera1[3],camera1[0],camera1[1],camera1[2]);
+        Vector3d tk1 = Vector3d(camera1[4],camera1[5],camera1[6]);
+
+        Sophus::Sim3d Sim3_k1(qk1,tk1);
+
+        Eigen::Quaterniond qk2 = Eigen::Quaterniond(camera2[3],camera2[0],camera2[1],camera2[2]);
+        Vector3d tk2 = Vector3d(camera2[4],camera2[5],camera2[6]);
+
+        Sophus::Sim3d Sim3_k2(qk2,tk2);
+
+        Eigen::Quaterniond qk21 = Eigen::Quaterniond(camera21[3],camera21[0],camera21[1],camera21[2]);
+        Vector3d tk21 = Vector3d(camera21[4],camera21[5],camera21[6]);
+
+        Sophus::Sim3d Sim3_k21(qk21,tk21);
+
+        Sophus::Sim3d result = Sim3_k21*Sim3_k1*(Sim3_k2.inverse());
+
+        //! S21*S1w*Sw2
+        double* tResiduals = result.log().data();
+
+        for (int j = 0; j < 7; ++j)
+            residual[j] = tResiduals[j];
+        return true;
+    }
+
+    double mObs[7];
+
+};
+
+struct RelativeSim3Error
+{
+    RelativeSim3Error(double* obs):
+            intrinsicRelativeSim3Error_(new ceres::NumericDiffCostFunction<IntrinsicRelativeSim3Error,ceres::CENTRAL,7,7,7>(
+                    new IntrinsicRelativeSim3Error(obs)))
+    {}
+
+    template <typename T> bool operator()(const T* const camera1, const T* const camera2, T* residuals) const
+    {
+        return intrinsicRelativeSim3Error_(camera1,camera2,residuals);
+    }
+
+    static ceres::CostFunction* Create(double* obs)
+    {
+        return (new ceres::AutoDiffCostFunction<RelativeSim3Error, 7, 7, 7>(new RelativeSim3Error(obs)));
+    }
+
+private:
+    ceres::CostFunctionToFunctor<7,7,7> intrinsicRelativeSim3Error_;
+
+};
 
 }//! namespace ceres
 

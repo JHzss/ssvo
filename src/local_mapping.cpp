@@ -29,11 +29,11 @@ TimeTracing::Ptr mapTrace = nullptr;
 //! LocalMapper
 LocalMapper::LocalMapper(const FastDetector::Ptr fast, bool report, bool verbose) :
     fast_detector_(fast), report_(report), verbose_(report&&verbose),
-    mapping_thread_(nullptr), stop_require_(false)
+    mapping_thread_(nullptr), stop_require_(false),finish_once_(false)
 {
     map_ = Map::create();
 
-    brief_ = BRIEF::create(2.0, Config::imageNLevel(),fast_detector_->getHeight(),fast_detector_->getWidth());
+    brief_ = BRIEF::create(2.0, Config::imageNLevel());//,fast_detector_->getHeight(),fast_detector_->getWidth());
 
     options_.min_disparity = 100;
     options_.min_redundant_observations = 3;
@@ -65,18 +65,49 @@ LocalMapper::LocalMapper(const FastDetector::Ptr fast, bool report, bool verbose
     string trace_dir = Config::timeTracingDirectory();
     mapTrace.reset(new TimeTracing("ssvo_trace_map", trace_dir, time_names, log_names));
 
-
+}
 #ifdef SSVO_DBOW_ENABLE
+LocalMapper::LocalMapper(DBoW3::Vocabulary* vocabulary, DBoW3::Database* database,const FastDetector::Ptr fast, bool report, bool verbose) :
+        fast_detector_(fast), report_(report), verbose_(report&&verbose),
+        mapping_thread_(nullptr), stop_require_(false), vocabulary_(vocabulary), database_(database)
+{
+    map_ = Map::create();
 
-    std::string voc_dir = Config::DBoWDirectory();
-    LOG_ASSERT(!voc_dir.empty()) << "Please check the config file! The DBoW directory is not set!";
-    vocabulary_ = DBoW3::Vocabulary(voc_dir);
-    LOG_ASSERT(!vocabulary_.empty()) << "Please check the config file! The Voc is empty!";
-    database_ = DBoW3::Database(vocabulary_, true, 4);
+    brief_ = BRIEF::create(2.0, Config::imageNLevel());//,fast_detector_->getHeight(),fast_detector_->getWidth());
 
-#endif
+    options_.min_disparity = 100;
+    options_.min_redundant_observations = 3;
+    options_.max_features = Config::minCornersPerKeyFrame();
+    options_.num_reproject_kfs = MAX(Config::maxReprojectKeyFrames(), 2);
+    options_.num_local_ba_kfs = MAX(Config::maxLocalBAKeyFrames(), 1);
+    options_.min_local_ba_connected_fts = Config::minLocalBAConnectedFts();
+    options_.num_align_iter = 15;
+    options_.max_align_epsilon = 0.01;
+    options_.max_align_error2 = 3.0;
+    options_.min_found_ratio_ = 0.15;
+
+    //! LOG and timer for system;
+    TimeTracing::TraceNames time_names;
+    time_names.push_back("total");
+    time_names.push_back("local_ba");
+    time_names.push_back("reproj");
+    time_names.push_back("dbow");
+
+    TimeTracing::TraceNames log_names;
+    log_names.push_back("frame_id");
+    log_names.push_back("keyframe_id");
+    log_names.push_back("num_reproj_kfs");
+    log_names.push_back("num_reproj_mpts");
+    log_names.push_back("num_matched");
+    log_names.push_back("num_fusion");
+
+
+    string trace_dir = Config::timeTracingDirectory();
+    mapTrace.reset(new TimeTracing("ssvo_trace_map", trace_dir, time_names, log_names));
 
 }
+
+#endif
 
 void LocalMapper::createInitalMap(const Frame::Ptr &frame_ref, const Frame::Ptr &frame_cur)
 {
@@ -135,8 +166,8 @@ void LocalMapper::stopMainThread()
 
 void LocalMapper::setStop()
 {
-        std::unique_lock<std::mutex> lock(mutex_stop_);
-        stop_require_ = true;
+    std::unique_lock<std::mutex> lock(mutex_stop_);
+    stop_require_ = true;
 }
 bool LocalMapper::isRequiredStop()
 {
@@ -144,10 +175,22 @@ bool LocalMapper::isRequiredStop()
     return stop_require_;
 }
 
+void LocalMapper::release()
+{
+    std::unique_lock<std::mutex> lock(mutex_stop_);
+    stop_require_ = false;
+}
+
+bool LocalMapper::finish_once()
+{
+    return finish_once_;
+}
+
 void LocalMapper::run()
 {
     while(!isRequiredStop())
     {
+        finish_once_ = false;
         KeyFrame::Ptr keyframe_cur = checkNewKeyFrame();
         if(keyframe_cur)
         {
@@ -167,7 +210,6 @@ void LocalMapper::run()
                 Optimizer::localBundleAdjustment(keyframe_cur, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, report_, verbose_);
                 mapTrace->stopTimer("local_ba");
             }
-
             for(const MapPoint::Ptr &mpt : bad_mpts)
             {
                 map_->removeMapPoint(mpt);
@@ -183,7 +225,11 @@ void LocalMapper::run()
             mapTrace->writeToFile();
 
             keyframe_last_ = keyframe_cur;
+
+            loop_closure_->insertKeyFrame(keyframe_cur);
+
         }
+        finish_once_ = true;
     }
 }
 
@@ -205,7 +251,7 @@ void LocalMapper::insertKeyFrame(const KeyFrame::Ptr &keyframe)
 {
     //! incase add the same keyframe twice
     if(!map_->insertKeyFrame(keyframe))
-        return;;
+        return;
 
     mapTrace->log("frame_id", keyframe->frame_id_);
     mapTrace->log("keyframe_id", keyframe->id_);
@@ -291,6 +337,9 @@ void LocalMapper::createFeatureFromSeed(const Seed::Ptr &seed)
         Feature::Ptr new_feature = Feature::create(px_cur, ft_cur, level_cur, mpt);
         kf->addFeature(new_feature);
 
+        if(mpt->isBad())
+            continue;
+
         mpt->addObservation(kf, new_feature);
     }
 
@@ -371,6 +420,9 @@ int LocalMapper::createFeatureFromLocalMap(const KeyFrame::Ptr &keyframe, const 
     {
         Vector3d xyz_cur(keyframe->Tcw() * mpt->pose());
         if(xyz_cur[2] < 0.0f)
+            continue;
+
+        if(mpt->isBad())
             continue;
 
         Vector2d px_cur(keyframe->cam_->project(xyz_cur));
@@ -814,36 +866,75 @@ inline size_t Grid<Feature::Ptr>::getIndex(const Feature::Ptr &element)
 void LocalMapper::addToDatabase(const KeyFrame::Ptr &keyframe)
 {
 #ifdef SSVO_DBOW_ENABLE
-    keyframe->dbow_fts_ = keyframe->getFeatures();
 
-    const int cols = keyframe->cam_->width();
-    const int rows = keyframe->cam_->height();
-    const int N = options_.max_features;
-    Grid<Feature::Ptr> grid(cols, rows, 30);
+    std::vector<uint64_t > mpt_id;
+    std::vector<Feature::Ptr> fts;
+    std::vector<MapPoint::Ptr> mpts;
+    keyframe->getFeaturesAndMapPoints(fts,mpts);
 
-    for(const Feature::Ptr &ft : keyframe->dbow_fts_)
+    keyframe->featuresInBow = fts;
+    keyframe->mapPointsInBow = mpts;
+
+    Corners old_corners;
+    old_corners.reserve(fts.size());
+    for(const Feature::Ptr &ft : fts)
     {
-        if(!brief_->checkBorder(ft->px_[0],ft->px_[1],ft->level_, true))
-            continue;
-
-        grid.insert(ft);
+        old_corners.emplace_back(Corner(ft->px_[0], ft->px_[1], 0, ft->level_));
+        mpt_id.emplace_back(ft->mpt_->id_);
     }
 
-    resetGridAdaptive(grid, N, 20);
+    Corners new_corners;
+    fast_detector_->detect(keyframe->images(), new_corners, old_corners, 1200);
 
-    grid.sort();
-    grid.getBestElement(keyframe->dbow_fts_);
+    if(new_corners.size()+old_corners.size()>1000)
+    {
+        std::sort(new_corners.begin(),new_corners.end(),[](Corner a,Corner b) -> bool { return a.score>b.score;});
+        new_corners.resize(1000 - old_corners.size());
+    }
 
     std::vector<cv::KeyPoint> kps;
-    for(const Feature::Ptr &ft : keyframe->dbow_fts_)
-        kps.emplace_back(cv::KeyPoint(ft->px_[0], ft->px_[1], 31, -1, 0, ft->level_));
+    for(const Corner & corner : old_corners)
+        kps.emplace_back(cv::KeyPoint(corner.x, corner.y, 31, -1, 0, corner.level));
+    for(const Corner & corner : new_corners)
+        kps.emplace_back(cv::KeyPoint(corner.x, corner.y, 31, -1, 0, corner.level));
 
     brief_->compute(keyframe->images(), kps, keyframe->descriptors_);
 
-    keyframe->dbow_Id_ = database_.add(keyframe->descriptors_, nullptr, nullptr);
+    LOG_ASSERT(old_corners.size()==fts.size())<<"the number of two should be equal"<<std::endl;
+    for (int j = 0; j < fts.size(); ++j) {
+        fts[j]->angle = kps[j].angle;
+    }
 
+    keyframe->KeyPoints.assign(kps.begin(),kps.end());
+
+    //! save descriptors of every mpt
+    for(int i=0;i< mpt_id.size();i++)
+    {
+        keyframe->mptId_des.insert(std::make_pair(mpt_id[i],keyframe->descriptors_.row(i)));
+    }
+    for(int i=0;i< mpt_id.size();i++)
+    {
+        fts[i]->descriptors_ = keyframe->descriptors_.row(i);
+    }
+
+    {
+        std::unique_lock<std::mutex> lock(loop_closure_->mutex_database_);
+        keyframe->dbow_Id_ = database_->add(keyframe->descriptors_, &keyframe->bow_vec_, &keyframe->feat_vec_);
+    }
+
+    for(auto &it:keyframe->feat_vec_)
+    {
+        for(auto &id:it.second)
+        {
+            if((int)id < mpt_id.size())
+            {
+                keyframe->mptId_nodeId.insert(std::make_pair(mpt_id[id],it.first));
+                LOG_ASSERT(std::find(keyframe->mapPointsInBow.begin(),keyframe->mapPointsInBow.end(),mpts[id])!=keyframe->mapPointsInBow.end());
+            }
+
+        }
+    }
     LOG_ASSERT(keyframe->dbow_Id_ == keyframe->id_) << "DBoW Id(" << keyframe->dbow_Id_ << ") is not match the keyframe's Id(" << keyframe->id_ << ")!";
-
 #endif
 }
 
@@ -856,8 +947,8 @@ KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corne
     std::vector<cv::KeyPoint> kps;
     for(const Corner & corner : corners)
     {
-        if(!brief_->checkBorder(corner.x,corner.y,corner.level,true))
-            continue;
+//        if(!brief_->checkBorder(corner.x,corner.y,corner.level,true))
+//            continue;
 
         kps.emplace_back(cv::KeyPoint(corner.x, corner.y, 31, -1, 0, corner.level));
     }
@@ -871,10 +962,10 @@ KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corne
 
     DBoW3::BowVector bow_vec;
     DBoW3::FeatureVector feat_vec;
-    vocabulary_.transform(descriptors, bow_vec, feat_vec, 4);
+    vocabulary_->transform(descriptors, bow_vec, feat_vec, 4);
 
     DBoW3::QueryResults results;
-    database_.query(bow_vec, results, 1);
+    database_->query(bow_vec, results, 1);
 
     if(results.empty())
         return nullptr;
@@ -893,5 +984,13 @@ KeyFrame::Ptr LocalMapper::relocalizeByDBoW(const Frame::Ptr &frame, const Corne
 
     return reference;
 }
+
+#ifdef SSVO_DBOW_ENABLE
+void LocalMapper::setLoopCloser(LoopClosure::Ptr loop_closure)
+{
+    loop_closure_ = loop_closure;
+}
+
+#endif
 
 }

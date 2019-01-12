@@ -9,9 +9,12 @@
 
 #ifdef SSVO_DBOW_ENABLE
 #include <DBoW3/DBoW3.h>
+#include "loop_closure.hpp"
 #endif
 
 namespace ssvo{
+
+class LoopClosure;
 
 class LocalMapper : public noncopyable
 {
@@ -38,15 +41,30 @@ public:
     static LocalMapper::Ptr create(const FastDetector::Ptr fast, bool report = false, bool verbose = false)
     { return LocalMapper::Ptr(new LocalMapper(fast, report, verbose));}
 
-private:
-
-    LocalMapper(const FastDetector::Ptr fast, bool report, bool verbose);
-
-    void run();
+#ifdef SSVO_DBOW_ENABLE
+    static LocalMapper::Ptr create(DBoW3::Vocabulary* vocabulary, DBoW3::Database* database, const FastDetector::Ptr fast, bool report = false, bool verbose = false)
+    { return LocalMapper::Ptr(new LocalMapper(vocabulary, database, fast, report, verbose));}
+        
+    void setLoopCloser(std::shared_ptr<LoopClosure> loop_closure);
+#endif
 
     void setStop();
 
     bool isRequiredStop();
+
+    void release();
+
+    bool finish_once();
+private:
+
+    LocalMapper(const FastDetector::Ptr fast, bool report, bool verbose);
+
+#ifdef SSVO_DBOW_ENABLE
+    LocalMapper(DBoW3::Vocabulary* vocabulary, DBoW3::Database* database,const FastDetector::Ptr fast, bool report, bool verbose);
+
+    std::shared_ptr<LoopClosure> loop_closure_;
+#endif
+    void run();
 
     KeyFrame::Ptr checkNewKeyFrame();
 
@@ -87,8 +105,8 @@ private:
     KeyFrame::Ptr keyframe_last_;
 
 #ifdef SSVO_DBOW_ENABLE
-    DBoW3::Vocabulary vocabulary_;
-    DBoW3::Database database_;
+    DBoW3::Vocabulary* vocabulary_;
+    DBoW3::Database* database_;
 
 #endif
 
@@ -100,6 +118,7 @@ private:
     std::list<MapPoint::Ptr> optimalize_candidate_mpts_;
 
     bool stop_require_;
+    bool finish_once_;
     std::mutex mutex_stop_;
     std::mutex mutex_keyframe_;
     std::mutex mutex_optimalize_mpts_;

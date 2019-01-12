@@ -36,7 +36,9 @@ public:
 
     KeyFramePtr getReferenceKeyFrame();
 
-    bool fusion(const MapPoint::Ptr &mpt);
+    bool fusion(const MapPoint::Ptr &mpt,const bool loop = false);
+
+    bool replace(const MapPoint::Ptr &mpt);
 
     void addObservation(const KeyFramePtr &kf, const Feature::Ptr &ft);
 
@@ -49,6 +51,8 @@ public:
     Feature::Ptr findObservation(const KeyFramePtr kf);
 
     void updateViewAndDepth();
+
+    std::vector<cv::Mat > getDescriptors();
 
     int predictScale(const double dist, const int max_level);
 
@@ -69,6 +73,8 @@ public:
     uint64_t getVisible();
 
     double getFoundRatio();
+
+    Vector3d getObsVec();
 
     inline void setPose(const double x, const double y, const double z)
     {
@@ -96,6 +102,11 @@ public:
 
     static uint64_t next_id_;
     const uint64_t id_;
+
+    uint64_t loop_id_;
+    uint64_t GBA_KF_;
+    uint64_t mnCorrectedByKF;
+    uint64_t mnCorrectedReference;
 
     static const double log_level_factor_;
 
@@ -125,7 +136,7 @@ private:
 
 };
 
-typedef std::list<MapPoint::Ptr> MapPoints;
+//typedef std::list<MapPoint::Ptr> MapPoints;
 
 }
 

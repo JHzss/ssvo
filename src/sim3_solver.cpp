@@ -18,11 +18,16 @@ void Sim3Solver::getEstimateSim3(Matrix3d &R, Vector3d &t, double &s, std::vecto
         inliers[indices_[i]] = true;
     }
 }
-
-bool Sim3Solver::runRANSAC(const int min_inliers, const int max_iterations)
+/**
+ * @brief compute sim3 by pSolver(curKeyFrame_->Tcw(),loopKeyFrame->Tcw(),fts_1_match,fts_2_match)
+ */
+bool Sim3Solver::runRANSAC(const int max_iterations_local_)
 {
-    if(min_inliers > indices_.size())
+    if(min_inliers_ > indices_.size())
+    {
+        noMore_ = true;
         return false;
+    }
 
     inliers_ = std::vector<bool>(indices_.size(), false);
     inliers_count_best_ = 0;
@@ -30,9 +35,13 @@ bool Sim3Solver::runRANSAC(const int min_inliers, const int max_iterations)
     std::vector<int> all_indice(indices_.size(), 0);
     std::iota(all_indice.begin(), all_indice.end(), 0);
 
-    int niters = max_iterations;
-    for(int iter = 0; iter < niters; iter++)
+//    int niters = max_iterations;
+//    for(int iter = 0; iter < niters; iter++)
+    int iter =0;
+    while (iterations_<maxIterations_ && iter<max_iterations_local_)
     {
+        iter++;
+        iterations_++;
         std::vector<Vector3d> mpts1; mpts1.reserve(3);
         std::vector<Vector3d> mpts2; mpts2.reserve(3);
         std::vector<int> samples = all_indice;
@@ -63,28 +72,32 @@ bool Sim3Solver::runRANSAC(const int min_inliers, const int max_iterations)
             inliers_ = inliers;
             inliers_count_best_ = inliers_count;
 
-            if(inliers_count < min_inliers)
-            {
-                //! N = log(1-p)/log(1-omega^s)
-                //! p = 99%
-                //! number of set: s = 8
-                //! omega = inlier points / total points
-                const static double num = log(1 - 0.99);
-                const double omega = inliers_count*1.0 / indices_.size();
-                const double denom = log(1 - pow(omega, 3));
-
-                niters = (denom >= 0 || -num >= max_iterations*(-denom)) ? max_iterations : round(num / denom);
-            }
-            else
-                break;
+            //todo 这步按理说是应该加上的
+//            if(inliers_count < min_inliers_)
+//            {
+//                //! N = log(1-p)/log(1-omega^s)
+//                //! p = 99%
+//                //! number of set: s = 8
+//                //! omega = inlier points / total points
+//                const static double num = log(1 - 0.99);
+//                const double omega = inliers_count*1.0 / indices_.size();
+//                const double denom = log(1 - pow(omega, 3));
+//
+//                maxIterations_ = (denom >= 0 || -num >= maxIterations_*(-denom)) ? maxIterations_ : round(num / denom);
+//            }
+//            else
+//                break;
         }
-
     }
 
-    if(inliers_count_best_ > min_inliers)
+    if(inliers_count_best_ > min_inliers_)
+    {
         return true;
+    }
     else
+    {
         return false;
+    }
 }
 
 //! p1 = s12*R12*p2+t12
@@ -187,10 +200,31 @@ int Sim3Solver::checkInliers(Matrix3d R12, Vector3d t12, double s12, std::vector
         }
         else
             inliers[i] = false;
-
     }
-
     return inlier_count;
+}
+void Sim3Solver::SetRansacParameters(double probability, int minInliers, int maxIterations)
+{
+    probability_ = probability;
+
+    min_inliers_ = std::max(minInliers,15);
+
+    maxIterations_ = maxIterations;
+
+    double epsilon = (double)min_inliers_/N_;
+
+    // Set RANSAC iterations according to probability, epsilon, and max iterations
+    int nIterations;
+
+    if(min_inliers_==N_)
+        nIterations=1;
+    else
+        nIterations = ceil(log(1-probability_)/log(1-pow(epsilon,3)));
+
+    maxIterations_ = std::max(1,std::min(nIterations,maxIterations_));
+
+    iterations_ = 0;
+
 }
 
 }

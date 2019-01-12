@@ -46,14 +46,17 @@ public:
 
     std::set<MapPoint::Ptr> removed_mpts_;
 
+    std::mutex mutex_kf_;
+    std::mutex mutex_mpt_;
+    std::mutex mutex_update_;
+
 private:
 
     std::unordered_map<uint64_t, KeyFrame::Ptr> kfs_;
 
     std::unordered_map<uint64_t, MapPoint::Ptr> mpts_;
 
-    std::mutex mutex_kf_;
-    std::mutex mutex_mpt_;
+
 };
 
 }
