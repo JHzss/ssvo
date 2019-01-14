@@ -58,10 +58,8 @@ void ComputeThreeMaxima(std::vector<int>* histo, const int L, int &ind1, int &in
 
 cv::Mat computeDistinctiveDescriptors(std::vector<cv::Mat> &descriptors)
 {
-    // 获得这些描述子两两之间的距离
     const size_t N = descriptors.size();
 
-    //float Distances[N][N];
     std::vector<std::vector<double > > Distances;
     Distances.resize(N, std::vector<double >(N, 0));
     for (size_t i = 0; i<N; i++)
@@ -70,13 +68,10 @@ cv::Mat computeDistinctiveDescriptors(std::vector<cv::Mat> &descriptors)
         for(size_t j = i+1; j < N;j++)
         {
             double distij = DBoW3::DescManip::distance(descriptors[i],descriptors[j]);
-//            std::cout<<"distij: "<<distij<<std::endl;
             Distances[i][j]=distij;
             Distances[j][i]=distij;
         }
     }
-
-//    std::cout<<"computu distance!"<<std::endl;
 
     // Take the descriptor with least median distance to the rest
     int BestMedian = INT_MAX;
@@ -88,18 +83,14 @@ cv::Mat computeDistinctiveDescriptors(std::vector<cv::Mat> &descriptors)
         std::vector<int> vDists(Distances[i].begin(), Distances[i].end());
         std::sort(vDists.begin(), vDists.end());
 
-        // 获得中值
         int median = vDists[0.5*(N-1)];
 
-        // 寻找最小的中值
         if(median<BestMedian)
         {
             BestMedian = median;
             BestIdx = i;
         }
     }
-//    std::cout<<"BestMedian: "<<BestMedian<<std::endl;
-//    std::cout<<"BestIdx: "<<BestIdx<<std::endl;
 
     return descriptors[BestIdx];
 
@@ -146,7 +137,6 @@ LoopClosure::LoopClosure(DBoW3::Vocabulary* vocabulary, DBoW3::Database* databas
         FullBAIdx_(0),update_finish_(false),loop_time_(0)
 {
     sim3_cw = Sophus::Sim3d();
-
     mnCovisibilityConsistencyTh = 3;
 }
 void LoopClosure::startMainThread()
@@ -159,7 +149,12 @@ void LoopClosure::startMainThread()
 
 void LoopClosure::stopMainThread()
 {
-
+    if(loop_closure_thread_)
+    {
+        if(loop_closure_thread_->joinable())
+            loop_closure_thread_->join();
+        loop_closure_thread_.reset();
+    }
 }
 
 void LoopClosure::insertKeyFrame(KeyFrame::Ptr kf)
@@ -197,7 +192,6 @@ bool LoopClosure::CheckNewKeyFrames()
     return (!keyFramesList_.empty());
 }
 
-//! 12.8检查过
 /**
  * @brief 检测闭环
  *      1. 计算与当前帧的共视关键帧的闭环向量的最小得分，作为筛选闭环帧的阈值
@@ -408,10 +402,6 @@ bool LoopClosure::DetectLoop()
     }
 }
 
-/**
- * @attention 已测试完成
- * @return
- */
 bool LoopClosure::ComputeSim3()
 {
 
@@ -698,9 +688,8 @@ bool LoopClosure::ComputeSim3()
         if(CurrentMatchedPoints[i])
             nTotalMatches++;
     }
-    LOG(WARNING) << "[LoopClosure] before SearchByProjection";
     int foundByProjection = SearchByProjection(10);
-    LOG(WARNING) << "[LoopClosure] New matches SearchByProjection"<<foundByProjection;
+    LOG(WARNING) << "[LoopClosure] New matches SearchByProjection "<<foundByProjection;
 
     int nTotalMatches1 = 0;
     for(size_t i = 0; i < CurrentMatchedPoints.size(); i++)
@@ -780,7 +769,6 @@ void LoopClosure::CorrectLoop()
 
         FullBAIdx_++;
 
-        //分离线程并释放
         if(thread_GBA_)
         {
             thread_GBA_->detach();
@@ -794,7 +782,7 @@ void LoopClosure::CorrectLoop()
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-    std::cout<<"local_mapper_ stop!"<<std::endl;
+    LOG(WARNING) << "[LoopClosure] local_mapper_ stop!";
 
     curKeyFrame_->updateConnections();
 
@@ -811,7 +799,7 @@ void LoopClosure::CorrectLoop()
 
     CorrectedSim3[curKeyFrame_] = sim3_cw;
 
-    std::cout<<"======curKeyFrame_ sim3======"<<std::endl;
+    LOG(WARNING) << "[LoopClosure] ======curKeyFrame_ sim3======";
     std::cout<<" R ======== <<"<<std::endl<< sim3_cw.rotationMatrix() <<std::endl;
     std::cout<<" t ======== <<"<<std::endl<< sim3_cw.translation().transpose() <<std::endl;
     std::cout<<" s ======== <<"<<std::endl<< sim3_cw.scale() <<std::endl;
@@ -1189,18 +1177,6 @@ int LoopClosure::SearchByBoW(KeyFrame::Ptr loopKeyFrame, std::vector<MapPoint::P
     LOG_ASSERT(mpts_2.size() == loopKeyFrame->mptId_des.size());
     LOG_ASSERT(fts_2.size() == loopKeyFrame->mptId_des.size());
 
-
-//    cv::Mat img1 = showFeatures(curKeyFrame_->getImage(0),fts_1);
-//    cv::Mat img2 = showFeatures(loopKeyFrame->getImage(0),fts_2);
-
-//    cv::imshow("features_cur",img1);
-//    cv::imshow("features_loop",img2);
-
-//    cv::imwrite("/home/jh/loopframe/Bfeatures_cur.png",img1);
-//    cv::imwrite("/home/jh/loopframe/Bfeatures_loop.png",img2);
-
-//    cv::waitKey(0);
-
     //! 需要注意，关键帧的描述子和MapPoint的对应关系
 
     Matches12 = std::vector<MapPoint::Ptr>(mpts_1.size(), static_cast<MapPoint::Ptr>(NULL));
@@ -1315,7 +1291,6 @@ int LoopClosure::SearchByBoW(KeyFrame::Ptr loopKeyFrame, std::vector<MapPoint::P
 }
 
 /**
- * @attention 已测试，效果不好的原因只能是Sim3计算结果不太好的原因
  * @brief 查找更多的匹配（成功的闭环匹配需要满足足够多的匹配特征点数，之前使用SearchByBoW进行特征点匹配时会有漏匹配）
           通过Sim3变换，确定pKF1的特征点在pKF2中的大致区域，同理，确定pKF2的特征点在pKF1中的大致区域
           在该区域内通过描述子进行匹配捕获pKF1和pKF2之前漏匹配的特征点，更新匹配vpMapPointMatches
@@ -1330,14 +1305,12 @@ int LoopClosure::SearchByBoW(KeyFrame::Ptr loopKeyFrame, std::vector<MapPoint::P
  * @return
  */
 int LoopClosure::SearchBySim3(KeyFrame::Ptr loopKeyFrame, std::unordered_map<uint64_t,uint64_t > &matches_1_2,std::unordered_map<uint64_t,uint64_t > &matches_2_1,
-                              double &s12, Matrix3d &R12, Vector3d &t12, float th, std::vector<MapPoint::Ptr> &Matches12, std::vector<int > &bestidx)
+                              double &s12,const Matrix3d &R12,const Vector3d &t12, float th, std::vector<MapPoint::Ptr> &Matches12, std::vector<int > &bestidx)
 {
     std::vector<Feature::Ptr> fts_1 = curKeyFrame_->featuresInBow;
-//    fts_1.resize(curKeyFrame_->mptId_des.size());
     const int Num_1 = fts_1.size();
     LOG_ASSERT(Num_1 == curKeyFrame_->mptId_des.size());
     std::vector<Feature::Ptr> fts_2 = loopKeyFrame->featuresInBow;
-//    fts_2.resize(loopKeyFrame->mptId_des.size());
     const int Num_2 = fts_2.size();
     LOG_ASSERT(Num_2 == loopKeyFrame->mptId_des.size());
 
@@ -1348,11 +1321,6 @@ int LoopClosure::SearchBySim3(KeyFrame::Ptr loopKeyFrame, std::unordered_map<uin
     std::vector<int> vnMatch1(Num_1,-1);
     std::vector<int> vnMatch2(Num_2,-1);
 
-
-
-        std::vector<cv::Point2f > points1;
-        std::vector<cv::Point2f > points2;
-//    std::cout<<"=============begin match========="<<std::endl;
     for (int i1 = 0; i1 < Num_1; ++i1)
     {
         if(matches_1_2.find(fts_1[i1]->mpt_->id_) != matches_1_2.end())
@@ -1369,26 +1337,9 @@ int LoopClosure::SearchBySim3(KeyFrame::Ptr loopKeyFrame, std::unordered_map<uin
         if(!loopKeyFrame->cam_->isInFrame(mptPx_cam2.cast<int>(), 8))
             continue;
 
-//        cv::Mat img0 = curKeyFrame_->getImage(0).clone();
-//        cv::Mat img1 = loopKeyFrame->getImage(0).clone();
-//
-//        std::vector<cv::Point2f > points1;
-//        std::vector<cv::Point2f > points2;
-//
-        points1.push_back(cv::Point2f(fts_1[i1]->px_[0],fts_1[i1]->px_[1]));
-        points2.push_back(cv::Point2f(mptPx_cam2[0],mptPx_cam2[1]));
-//
-//        cv::Mat img_show = showMatch(img0,img1,points1,points2);
-//
-//        cv::imshow("one point 1_to_2",img_show);
-
         const double maxDistance = fts_1[i1]->mpt_->getMaxDistanceInvariance();
         const double minDistance = fts_1[i1]->mpt_->getMinDistanceInvariance();
         const double dist3D = mptPose_cam2.norm();
-
-//        std::cout<<"dist3D: "<<dist3D<<std::endl;
-//        std::cout<<"minDistance: "<<minDistance<<std::endl;
-//        std::cout<<"maxDistance: "<<maxDistance<<std::endl;
 
         // Depth must be inside the scale invariance region
         if(dist3D<minDistance || dist3D>maxDistance )
@@ -1396,22 +1347,8 @@ int LoopClosure::SearchBySim3(KeyFrame::Ptr loopKeyFrame, std::unordered_map<uin
 
         //todo 5 是否可以直接使用特征点层数
         const double radius = th * (1 << fts_1[i1]->level_);
-//        std::cout <<"radius: "<< radius << std::endl;
-
         //! 取出该区域内的所有特征点(mptPx_cam2,radius)
         std::vector<int > ftsIdx_InCam2Area = loopKeyFrame->getFeaturesInArea(mptPx_cam2[0],mptPx_cam2[1],radius);
-
-//        std::cout<< "ftsIdx_InCam2Area number: "<<ftsIdx_InCam2Area.size()<<std::endl;
-//
-//        cv::Mat img2 = loopKeyFrame->getImage(0).clone();
-//        std::vector<Feature::Ptr> f;
-//        for (int i = 0; i < ftsIdx_InCam2Area.size(); ++i) {
-//            f.push_back(fts_2[ftsIdx_InCam2Area[i]]);
-//        }
-//        cv::Mat img_feas = showFeatures(img2,f);
-//
-//        cv::imshow("fea cur in 2",img_feas);
-
 
         if(ftsIdx_InCam2Area.empty())
             continue;
@@ -1424,8 +1361,6 @@ int LoopClosure::SearchBySim3(KeyFrame::Ptr loopKeyFrame, std::unordered_map<uin
             if(matches_2_1.find(fts_2[ftsIdx_InCam2Area[i2]]->mpt_->id_) != matches_2_1.end())
                 continue;
             //todo 6 level check这样是否可以
-//            if(fts_2[ftsIdx_InCam2Area[i2]]->level_ != fts_1[i1]->level_)
-//                continue;
             int dist = DBoW3::DescManip::distance(curKeyFrame_->mptId_des[fts_1[i1]->mpt_->id_],loopKeyFrame->mptId_des[fts_2[ftsIdx_InCam2Area[i2]]->mpt_->id_]);
 
 
@@ -1436,25 +1371,12 @@ int LoopClosure::SearchBySim3(KeyFrame::Ptr loopKeyFrame, std::unordered_map<uin
             }
         }
 
-//        std::cout<<"bestDist: "<<bestDist<<std::endl;
-//        std::cout<<"bestIdx: "<<bestIdx<<std::endl;
-
-        //todo record the results
         if(bestDist<=TH_HIGH)
         {
             vnMatch1[i1] = bestIdx;
         }
 
     }
-        cv::Mat proj;
-
-        proj = showMatch(curKeyFrame_->getImage(0),loopKeyFrame->getImage(0),points1,points2);
-
-        cv::imwrite("/home/jh/loopframe/projAllfeatures.png",proj);
-
-
-
-
 
     for (int i2 = 0; i2 < Num_2; ++i2)
     {
@@ -1471,22 +1393,6 @@ int LoopClosure::SearchBySim3(KeyFrame::Ptr loopKeyFrame, std::unordered_map<uin
         Vector2d mptPx_cam1 = curKeyFrame_->cam_->project(mptPose_cam1);
         if(!curKeyFrame_->cam_->isInFrame(mptPx_cam1.cast<int>(), 8))
             continue;
-//
-//
-//        cv::Mat img0 = curKeyFrame_->getImage(0).clone();
-//        cv::Mat img1 = loopKeyFrame->getImage(0).clone();
-//
-//        std::vector<cv::Point2f > points1;
-//        std::vector<cv::Point2f > points2;
-//
-//        points2.push_back(cv::Point2f(fts_2[i2]->px_[0],fts_2[i2]->px_[1]));
-//        points1.push_back(cv::Point2f(mptPx_cam1[0],mptPx_cam1[1]));
-//
-//        cv::Mat img_show = showMatch(img0,img1,points1,points2);
-//
-//        cv::imshow("one point 2_to_1",img_show);
-
-
 
         const double maxDistance = fts_2[i2]->mpt_->getMaxDistanceInvariance();
         const double minDistance = fts_2[i2]->mpt_->getMinDistanceInvariance();
@@ -1496,24 +1402,10 @@ int LoopClosure::SearchBySim3(KeyFrame::Ptr loopKeyFrame, std::unordered_map<uin
         if(dist3D<minDistance || dist3D>maxDistance )
             continue;
 
-        //todo 这样是否可以
         const double radius = th * (1 << fts_2[i2]->level_);
 
         //! 取出该区域内的所有特征点(mptPx_cam2,radius)
         std::vector<int > fts_InCam1Area = curKeyFrame_->getFeaturesInArea(mptPx_cam1[0],mptPx_cam1[1],radius);
-//        std::cout<< "ftsIdx_InCam1Area number: "<<fts_InCam1Area.size()<<std::endl;
-//
-//
-//        cv::Mat img_cur = curKeyFrame_->getImage(0).clone();
-//        std::vector<Feature::Ptr> f;
-//        for (int i = 0; i < fts_InCam1Area.size(); ++i) {
-//            f.push_back(fts_1[fts_InCam1Area[i]]);
-//        }
-//        cv::Mat img_fea = showFeatures(img_cur,f);
-//
-//        cv::imshow("fea2 in cur",img_fea);
-//
-//        cv::waitKey(0);
 
         int bestDist = INT_MAX;
         int bestIdx = -1;
@@ -1535,18 +1427,12 @@ int LoopClosure::SearchBySim3(KeyFrame::Ptr loopKeyFrame, std::unordered_map<uin
                 bestIdx = fts_InCam1Area[i1];
             }
         }
-//        std::cout<<"bestDist: "<<bestDist<<std::endl;
-//        std::cout<<"bestIdx: "<<bestIdx<<std::endl;
 
-        //todo record the results
         if(bestDist<=TH_HIGH)
         {
             vnMatch2[i2] = bestIdx;
         }
     }
-
-        std::cout<<"------------match all--------------"<<std::endl;
-
     //! 必须双向匹配到才行
     // Check agreement
     int nFound = 0;
@@ -1570,13 +1456,7 @@ int LoopClosure::SearchBySim3(KeyFrame::Ptr loopKeyFrame, std::unordered_map<uin
     }
     return nFound;
 }
-/**
- * @attention todo 有没有必要对匹配的特征点进行更新，即如果发现一个更好的匹配点的话就更新匹配点
- * @brief 根据Sim3变换，将每个LoopFeatures投影到CurrentKF上，并根据尺度确定一个搜索区域，
- * 根据该feature对应的描述子与该区域内的特征点进行匹配，如果匹配误差小于TH_LOW即匹配成功，更新mvpCurrentMatchedPoints
- * @param th 搜索范围大小的阈值
- * @return
- */
+
 int LoopClosure::SearchByProjection(int th)
 {
 
@@ -1587,30 +1467,22 @@ int LoopClosure::SearchByProjection(int th)
     Vector3d tcw = T_cw.translation()/scw;
     Vector3d Ow = - Rcw.transpose() * tcw;
 
-    //! 没有修改匹配关系CurrentMatchedPoints
     std::set<MapPoint::Ptr> AlreadyFound(CurrentMatchedPoints.begin(), CurrentMatchedPoints.end());
     AlreadyFound.erase(static_cast<MapPoint::Ptr>(NULL));
 
     int nmatches=0;
 
-    // For each Candidate MapPoint Project and Match
-    // 遍历所有的MapPoints
     for(int iMP=0, iendMP = LoopMapPoints.size(); iMP<iendMP; iMP++)
     {
         MapPoint::Ptr pMP = LoopMapPoints[iMP];
 
         // Discard Bad MapPoints and already found
-        // 丢弃坏的MapPoints和已经匹配上的MapPoints
         if(pMP->isBad() || AlreadyFound.count(pMP))
             continue;
-
-        // Get 3D Coords.
         Vector3d mptPose_world = pMP->pose();
 
-        // Transform into Camera Coords.
         Vector3d mptPose_cam = Rcw * mptPose_world + tcw;
 
-        // Depth must be positive
         if(mptPose_cam[2]<0.0)
             continue;
 
@@ -1623,18 +1495,12 @@ int LoopClosure::SearchByProjection(int th)
             continue;
 
         // Depth must be inside the scale invariance region of the point
-        // 判断距离是否在尺度协方差范围内
         const float maxDistance = pMP->getMaxDistanceInvariance();
         const float minDistance = pMP->getMinDistanceInvariance();
 
         //todo 这里的方向有点问题吧
-//        Vector3d PO = mptPose_world-Ow;
         Vector3d PO =Ow - mptPose_world;
         const float dist = PO.norm();
-
-//        std::cout<<"dist3D: "<<dist<<std::endl;
-//        std::cout<<"minDistance: "<<minDistance<<std::endl;
-//        std::cout<<"maxDistance: "<<maxDistance<<std::endl;
 
 
         if(dist < minDistance || dist > maxDistance)
@@ -1644,38 +1510,30 @@ int LoopClosure::SearchByProjection(int th)
         //todo 角度计算
         Vector3d Pn = pMP->getObsVec();
 
-//        std::cout<<"PO.dot(Pn): "<<PO.dot(Pn)<<std::endl;
-
         if(PO.dot(Pn)<0.5*dist)
             continue;
 
         int predictedLevel = LoopMapPoints[iMP]->predictScale(dist,4);
 
-//        std::cout<<"predictedLevel: "<<predictedLevel<<std::endl;
         // Search in a radius
-        // 根据尺度确定搜索半径
         const double radius = th * (1 << predictedLevel);
 
         std::vector<int > fts_InCurCamArea = curKeyFrame_->getFeaturesInArea(u,v,radius);
-//        std::cout<<"fts_InCurCamArea size: "<<fts_InCurCamArea.size()<<std::endl;
 
         if(fts_InCurCamArea.empty())
             continue;
 
         // Match to the most similar keypoint in the radius
-        //todo 每一个mpt被观测到的次数太少了
+        //todo 每一个mpt被观测到的次数有点少
         std::vector<cv::Mat > dMPs = pMP->getDescriptors();
-//        std::cout<<"dMPs size: "<<dMPs.size()<<std::endl;
 
         if(dMPs.empty())
             continue;
 
         cv::Mat dMP = computeDistinctiveDescriptors(dMPs);
-//        std::cout<<" computeDistinctiveDescriptors! "<<std::endl;
 
         int bestDist = 256;
         int bestIdx = -1;
-        // 遍历搜索区域内所有特征点，与该MapPoint的描述子进行匹配
         for (int i1 = 0; i1 < fts_InCurCamArea.size(); ++i1)
         {
             if(CurrentMatchedPoints[fts_InCurCamArea[i1]])
@@ -1695,12 +1553,6 @@ int LoopClosure::SearchByProjection(int th)
                 bestIdx = fts_InCurCamArea[i1];
             }
         }
-
-//        std::cout<<"bestDist: "<<bestDist<<std::endl;
-//        std::cout<<"bestIdx: "<<bestIdx<<std::endl;
-
-
-        // 该MapPoint与bestIdx对应的特征点匹配成功
         if(bestDist<=TH_LOW)
         {
             CurrentMatchedPoints[bestIdx]=pMP;
@@ -1728,32 +1580,23 @@ void LoopClosure::searchAndFuse(const KeyFrameAndPose &CorrectedPosesMap)
     // 遍历闭环相连的关键帧
     for(KeyFrameAndPose::const_iterator mit = CorrectedPosesMap.begin(), mend=CorrectedPosesMap.end(); mit!=mend;mit++)
     {
-//        std::cout<<"deal a new kf"<<std::endl;
         KeyFrame::Ptr pKF = mit->first;
 
         if(pKF == curKeyFrame_)
             continue;
-//        std::cout<<"Project to KF : "<<pKF->id_<<std::endl;
 
         Sophus::Sim3d sim3_Scw = mit->second;
 
-//        SE3d Scw = SE3d(sim3_Scw.rotationMatrix(),sim3_Scw.translation());
-
-        // 将闭环相连帧的MapPoints(LoopMapPoints)坐标变换到pKF帧(当前帧的相连坐标)坐标系，然后投影，检查冲突并融合
         std::vector<MapPoint::Ptr > vpReplacePoints(LoopMapPoints.size(),static_cast<MapPoint::Ptr>(NULL));
         int new_fuse= fuse(pKF,sim3_Scw,7.5,vpReplacePoints);// 搜索区域系数为4
-
-//        std::cout<<"Mpt to fuse from loop to kf(id,frame id)<"<<pKF->id_<<","<<pKF->frame_id_<<"> is "<<new_fuse<<std::endl;
 
         fuse_num += new_fuse;
 
         //todo  Get Map Mutex
-//        std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
         const int nLP = LoopMapPoints.size();
 
         std::set<KeyFrame::Ptr> kf_toUpdate;
 
-//        std::cout<<"Begin to fuse mpt"<<std::endl;
         for(int i=0; i<nLP;i++)
         {
             MapPoint::Ptr pRep = vpReplacePoints[i];
@@ -1764,7 +1607,6 @@ void LoopClosure::searchAndFuse(const KeyFrameAndPose &CorrectedPosesMap)
                     continue;
                 if(pRep != pLoopMP)
                 {
-//                    std::cout<<"Fuse mpt "<<pLoopMP->id_<<" <- "<<pRep->id_<<std::endl;
                     pLoopMP->fusion(pRep,true);
                     std::map<KeyFrame::Ptr, Feature::Ptr> obs = pRep->getObservations();
 
@@ -1783,20 +1625,8 @@ void LoopClosure::searchAndFuse(const KeyFrameAndPose &CorrectedPosesMap)
                     }
                 }
             }
-//            std::cout<<"end fuse a  mpt"<<std::endl;
         }
-//        std::cout<<"end fuse a  kf"<<std::endl;
-
-//        for(auto &kf:kf_toUpdate)
-//        {
-//            kf->updateConnections();
-//        }
-
-//        std::cout<<"end deal a kf"<<std::endl;
     }
-
-    std::cout<<"All Fuse mpt number:"<<fuse_num<<std::endl;
-//    std::abort();
 }
 
 /**
@@ -1811,8 +1641,6 @@ int LoopClosure::fuse(KeyFrame::Ptr pKF, const Sophus::Sim3d & Scw, float th,
                       std::vector<MapPoint::Ptr> &vpReplacePoint)
 {
 
-//    Matrix3d sRcw = Scw.rotationMatrix();
-//    double s2 = sRcw.block<1,3>(0,0) * sRcw.block<3,1>(0,0);
     double scw = Scw.scale();
     Matrix3d Rcw = Scw.rotationMatrix();
     Vector3d tcw = Scw.translation();
@@ -1847,30 +1675,18 @@ int LoopClosure::fuse(KeyFrame::Ptr pKF, const Sophus::Sim3d & Scw, float th,
         // Point must be inside the image
         if(!pKF->cam_->isInFrame(px.cast<int>()))
             continue;
-
-//        std::vector<cv::Point2f> points1,points2;
         KeyFrame::Ptr ref = pMP->getReferenceKeyFrame();
         Feature::Ptr ft_pmp = ref->getFeatureByMapPoint(pMP);
         if(!ft_pmp)
             continue;
-
-//        points1.push_back(cv::Point2f(ft_pmp->px_[0],ft_pmp->px_[1]));
-//        points2.push_back(cv::Point2f(px[0],px[1]));
-
 
         // Depth must be inside the scale invariance region of the point
         // 判断距离是否在尺度协方差范围内
         const float maxDistance = pMP->getMaxDistanceInvariance();
         const float minDistance = pMP->getMinDistanceInvariance();
 
-        //todo 这里的方向有点问题吧
-//        Vector3d PO = mptPose_world-Ow;
         Vector3d PO = Ow - mptPose_world;
         const float dist = PO.norm();
-
-//        std::cout<<"dist3D: "<<dist<<std::endl;
-//        std::cout<<"minDistance: "<<minDistance<<std::endl;
-//        std::cout<<"maxDistance: "<<maxDistance<<std::endl;
 
         if(dist < minDistance || dist > maxDistance)
         {
@@ -1878,10 +1694,7 @@ int LoopClosure::fuse(KeyFrame::Ptr pKF, const Sophus::Sim3d & Scw, float th,
         }
 
         // Viewing angle must be less than 60 deg
-        //todo 角度计算
         Vector3d Pn = pMP->getObsVec();
-
-//        std::cout<<"PO.dot(Pn): "<<PO.dot(Pn)<<std::endl;
 
         if(PO.dot(Pn)<0.5*dist)
         {
@@ -1890,13 +1703,11 @@ int LoopClosure::fuse(KeyFrame::Ptr pKF, const Sophus::Sim3d & Scw, float th,
 
         int predictedLevel = LoopMapPoints[iMP]->predictScale(dist,4);
 
-//        std::cout<<"predictedLevel: "<<predictedLevel<<std::endl;
         // Search in a radius
         // 根据尺度确定搜索半径
         const double radius = th * (1 << ft_pmp->level_);
 
         std::vector<int > fts_InCurCamArea = pKF->getFeaturesInArea(u,v,radius);
-//        std::cout<<"fts_InCurCamArea size: "<<fts_InCurCamArea.size()<<std::endl;
 
         if(fts_InCurCamArea.empty())
         {
@@ -1904,9 +1715,7 @@ int LoopClosure::fuse(KeyFrame::Ptr pKF, const Sophus::Sim3d & Scw, float th,
         }
 
         // Match to the most similar keypoint in the radius
-        //todo 每一个mpt被观测到的次数太少了
         std::vector<cv::Mat > dMPs = pMP->getDescriptors();
-//        std::cout<<"dMPs size: "<<dMPs.size()<<std::endl;
 
         if(dMPs.empty())
         {
@@ -1914,11 +1723,9 @@ int LoopClosure::fuse(KeyFrame::Ptr pKF, const Sophus::Sim3d & Scw, float th,
         }
 
         cv::Mat dMP = computeDistinctiveDescriptors(dMPs);
-//        std::cout<<" computeDistinctiveDescriptors! "<<std::endl;
 
         int bestDist = 256;
         int bestIdx = -1;
-        // 遍历搜索区域内所有特征点，与该MapPoint的描述子进行匹配
         for (int i1 = 0; i1 < fts_InCurCamArea.size(); ++i1)
         {
             LOG_ASSERT(fts_InCurCamArea[i1]<pKF->featuresInBow.size());
@@ -1933,33 +1740,12 @@ int LoopClosure::fuse(KeyFrame::Ptr pKF, const Sophus::Sim3d & Scw, float th,
 
             int dist = DBoW3::DescManip::distance(dMP,pKF->mptId_des[pKF->mapPointsInBow[fts_InCurCamArea[i1]]->id_]);
 
-//            points2.clear();
-
-//            points2.push_back(cv::Point2f(pKF->featuresInBow[fts_InCurCamArea[i1]]->px_[0],pKF->featuresInBow[fts_InCurCamArea[i1]]->px_[1]));
-
-//            cv::Mat img_show;
-//            std::string filename_;
-//            filename_ ="/home/jh/loopframe/dist_"+ std::to_string(dist)+ ".png";
-//            img_show = showMatch(ref->getImage(0),pKF->getImage(0),points1,points2);
-//            cv::imwrite(filename_,img_show);
-
             if(dist<bestDist)
             {
                 bestDist = dist;
                 bestIdx = fts_InCurCamArea[i1];
             }
         }
-
-//        std::cout<<"bestDist: "<<bestDist<<std::endl;
-////        std::cout<<"bestIdx: "<<bestIdx<<std::endl;
-//        cv::Mat img_show;
-//        std::string filename_;
-//        filename_ ="/home/jh/loopframe/mpt_"+std::to_string(pMP->id_) + "inref_" +std::to_string(pKF->id_) + "_bestDist_" + std::to_string(bestDist)+ "_.png";
-//        img_show = showMatch(ref->getImage(0),pKF->getImage(0),points1,points2);
-//        cv::imwrite(filename_,img_show);
-
-
-        // 该MapPoint与bestIdx对应的特征点匹配成功
         if(bestDist<=TH_LOW)
         {
             vpReplacePoint[iMP] = pKF->mapPointsInBow[bestIdx];
@@ -1979,7 +1765,6 @@ void LoopClosure::RunGlobalBundleAdjustment(uint64_t nLoopKF)
     Optimizer::globleBundleAdjustment(local_mapper_->map_, 20, nLoopKF, true, true);
 
     {
-        //todo
         std::unique_lock<std::mutex> lock(mutex_GBA_);
         if(idx != FullBAIdx_)
             return;
@@ -2009,33 +1794,22 @@ void LoopClosure::RunGlobalBundleAdjustment(uint64_t nLoopKF)
                 KeyFrame::Ptr kf = kfs[iK];
                 kf->updateConnections();
 
+                kf->beforeGBA_Tcw_ = kf->Tcw();
+
                 if(kf->GBA_KF_ != nLoopKF)
                 {
-                    kf->beforeGBA_Tcw_ = kf->Tcw();
-                    std::set<KeyFrame::Ptr > connectedKeyFrames = kf->getConnectedKeyFrames(-1,50);
-                    for(KeyFrame::Ptr rkf:connectedKeyFrames)
-                    {
-                        if(rkf->GBA_KF_ == nLoopKF)
-                        {
-                            SE3d Tci_cr = kf->Tcw() * (rkf->beforeGBA_Tcw_.inverse());
-                            kf->optimal_Tcw_ = Tci_cr * (rkf->optimal_Tcw_);
-                            kf->GBA_KF_ = nLoopKF;
-                            break;
-                        }
-                    }
-                    if(kf->GBA_KF_ != nLoopKF)
-                    {
-                        kfs_miss.push_back(kf);
-                        break;
-                    }
+                    kfs_miss.push_back(kf);
+                    break;
                 }
                 kf->setTcw(kf->optimal_Tcw_);
             }
 
+            int iter = 0;
             while(!kfs_miss.empty())
             {
+                iter ++;
                 KeyFrame::Ptr kf = kfs_miss.front();
-                std::set<KeyFrame::Ptr > connectedKeyFrames = kf->getConnectedKeyFrames();
+                std::set<KeyFrame::Ptr > connectedKeyFrames = kf->getConnectedKeyFrames(5+iter,-1);
                 for(KeyFrame::Ptr rkf:connectedKeyFrames)
                 {
                     if(rkf->GBA_KF_ == nLoopKF)

@@ -360,7 +360,7 @@ struct IntrinsicReprojErrorOnlyPose
         //todo 检查这里的问题
         if(q.squaredNorm()<0.001||q.squaredNorm()>1000)
             q.normalize();
-        std::cout<<"q.squaredNorm(): "<<q.squaredNorm()<<std::endl;
+//        std::cout<<"q.squaredNorm(): "<<q.squaredNorm()<<std::endl;
 
         Sophus::Sim3d Sim3_cam(q,t);
         Vector3d Mp_cam = Sim3_cam * Mp_Pos_;
@@ -397,7 +397,7 @@ struct IntrinsicReprojErrorOnlyPoseInvSim3
         //todo 检查这里的问题
         if(q.squaredNorm()<0.001||q.squaredNorm()>1000)
             q.normalize();
-        std::cout<<"q.squaredNorm(): "<<q.squaredNorm()<<std::endl;
+//        std::cout<<"q.squaredNorm(): "<<q.squaredNorm()<<std::endl;
 
         Sophus::Sim3d Sim3_k12(q,t);
 

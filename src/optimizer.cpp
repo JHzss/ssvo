@@ -952,6 +952,7 @@ void Optimizer::OptimizeEssentialGraph(Map::Ptr pMap, KeyFrame::Ptr pLoopKF, Key
             continue;
 
         int nIDr;
+        // 经过sim3矫正的点
         if(pMP->mnCorrectedByKF==pCurKF->id_)
         {
             nIDr = pMP->mnCorrectedReference;
@@ -965,11 +966,11 @@ void Optimizer::OptimizeEssentialGraph(Map::Ptr pMap, KeyFrame::Ptr pLoopKF, Key
         Sophus::Sim3d Srw = vScw[nIDr];
         SE3d Srw_se3 = SE3d(Srw.rotationMatrix(),Srw.translation());
         Sophus::Sim3d correctedSwr = vCorrectedSwc[nIDr];
-
         SE3d  correctedSwr_se3 = SE3d(correctedSwr.rotationMatrix(),correctedSwr.translation());
 
         Vector3d eigP3Dw = pMP->pose();
-        Eigen::Vector3d eigCorrectedP3Dw = correctedSwr_se3 * (Srw_se3 * eigP3Dw);
+//        Eigen::Vector3d eigCorrectedP3Dw = correctedSwr_se3 * (Srw_se3 * eigP3Dw);
+        Eigen::Vector3d eigCorrectedP3Dw = correctedSwr * (Srw * eigP3Dw);
 
         pMP->setPose(eigCorrectedP3Dw);
         pMP->updateViewAndDepth();

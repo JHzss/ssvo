@@ -31,8 +31,6 @@ int main(int argc, char *argv[])
         vo.process(image, timestamp);
         timer.stop();
 
-
-
         double time_process = timer.duration();
 
         double time_wait = 0;
@@ -43,8 +41,6 @@ int main(int argc, char *argv[])
 
         if(time_process < time_wait)
             std::this_thread::sleep_for(std::chrono::microseconds((int)(time_wait - time_process)));
-
-
 
 
     }

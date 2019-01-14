@@ -109,6 +109,7 @@ System::~System()
     viewer_->setStop();
     depth_filter_->stopMainThread();
     mapper_->stopMainThread();
+    loop_closure_->stopMainThread();
 
     viewer_->waitForFinish();
 }
@@ -519,7 +520,29 @@ void System::saveTrajectoryTUM(const std::string &file_name)
           << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
     }
     f.close();
-    LOG(INFO) << " Trajectory saved!";
+    LOG(INFO) << " trajectory saved!";
+
+    std::string KFfilename = "KF" + file_name;
+
+    f.open(KFfilename.c_str());
+    f << std::fixed;
+
+    std::vector<KeyFrame::Ptr> kfs = mapper_->map_->getAllKeyFrames();
+    std::sort(kfs.begin(),kfs.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->timestamp_<kf2->timestamp_;});
+
+    for(auto kf:kfs)
+    {
+        Sophus::SE3d frame_pose = kf->pose();//(*reference_keyframe_ptr)->Twc() * (*frame_pose_ptr);
+        Vector3d t = frame_pose.translation();
+        Quaterniond q = frame_pose.unit_quaternion();
+
+        f << std::setprecision(6) << kf->timestamp_ << " "
+          << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+    }
+    f.close();
+    LOG(INFO) << " KFtrajectory saved!";
+
+
 }
 
 }

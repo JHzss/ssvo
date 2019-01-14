@@ -76,12 +76,11 @@ private:
 
     void CorrectLoop();
 
-    //todo remove curKeyFrame
     int SearchByBoW(KeyFrame::Ptr loopKeyFrame, std::vector<MapPoint::Ptr> &Matches12, std::vector<int > &bestidx);
 
     int SearchBySim3(KeyFrame::Ptr loopKeyFrame,
                      std::unordered_map<uint64_t,uint64_t > &matches_1_2,std::unordered_map<uint64_t,uint64_t > &matches_2_1,
-                     double &s12, Matrix3d &R12, Vector3d &t12, float th, std::vector<MapPoint::Ptr> &Matches12,  std::vector<int > &bestidx);
+                     double &s12, const Matrix3d &R12, const Vector3d &t12, float th, std::vector<MapPoint::Ptr> &Matches12,  std::vector<int > &bestidx);
 
     int SearchByProjection(int th );
 
@@ -92,7 +91,6 @@ private:
     void RunGlobalBundleAdjustment(uint64_t nLoopKF);
 
 private:
-    //todo remove curKeyFrame
     std::vector<KeyFrame::Ptr> DetectLoopCandidates(double minScore);
 
     DBoW3::Vocabulary* vocabulary_;
@@ -112,11 +110,8 @@ private:
 //    *   [mpt6_1  mpt_f_n ]
 //    *   [mpt7_1  mpt_g_n ]
 //    *   [mpt8_1  mpt_h_k ]
-//    std::map<uint64_t ,cv::Mat> MptsId_Dess;
-//    std::set<uint64_t > CurrentMatchedPoints_ids;//当前匹配的mappoint id
     std::vector<MapPoint::Ptr> LoopMapPoints; //闭环帧及其共视帧的所有观测到的mpt，设置为set，不包含相同的元素
-//    std::vector<Feature::Ptr> LoopFeatures; //!闭环帧及其共视帧的所有的features，不包含重复mpt的feature，仅仅将其描述子保存下来以计算mpt的最佳描述子
-//    std::vector<Feature::Ptr> CurrentMatchedFeatures;
+
 
 
     Sophus::Sim3d sim3_cw;
