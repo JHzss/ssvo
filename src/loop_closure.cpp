@@ -169,7 +169,7 @@ void LoopClosure::insertKeyFrame(KeyFrame::Ptr kf)
 void LoopClosure::run()
 {
     ifFinished = false;
-    while(1)
+    while(0)
     {
         if(CheckNewKeyFrames())
         {
@@ -1758,7 +1758,9 @@ int LoopClosure::fuse(KeyFrame::Ptr pKF, const Sophus::Sim3d & Scw, float th,
 
 void LoopClosure::RunGlobalBundleAdjustment(uint64_t nLoopKF)
 {
-    LOG(WARNING) << "[LoopClosure] Starting Global Bundle Adjustment! " << std::endl;
+    //防止同时调用GBA，但是这种情况应该不会发生
+//    std::unique_lock<std::mutex> lockRun(mutex_RunGBA_);
+    LOG(WARNING) << "[LoopClosure or LocalMapping] Starting Global Bundle Adjustment! " << std::endl;
 
     int idx = FullBAIdx_;
 

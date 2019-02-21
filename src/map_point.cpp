@@ -412,4 +412,16 @@ Vector3d MapPoint::getObsVec()
     return ret;
 }
 
+void MapPoint::updateScale(double &scale)
+{
+    std::lock_guard<std::mutex> lock(mutex_pose_);
+    pose_ *= scale;
+
+    min_distance_ *= scale;
+    max_distance_ *= scale;
+
+    //todo check orb中没有这一步，需不需要加呢？看一下实验效果吧
+
+}
+
 }

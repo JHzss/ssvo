@@ -11,6 +11,7 @@
 #include "local_mapping.hpp"
 #include "depth_filter.hpp"
 #include "viewer.hpp"
+#include "src/IMU/imudata.hpp"
 
 #ifdef SSVO_DBOW_ENABLE
 #include "loop_closure.hpp"
@@ -42,11 +43,15 @@ public:
 
     void process(const cv::Mat& image, const double timestamp);
 
+    void process(const cv::Mat& image, const double timestamp,const std::vector<ssvo::IMUData> &vimu );
+
 private:
 
     void processFrame();
 
     Status tracking();
+
+    Status trackingVIO();
 
     Status initialize();
 
@@ -97,6 +102,36 @@ private:
     std::list<double > frame_timestamp_buffer_;
     std::list<Sophus::SE3d> frame_pose_buffer_;
     std::list<KeyFrame::Ptr> reference_keyframe_buffer_;
+
+//! imu ---------------------------------------------
+public:
+    /**
+     * 1.初始化完成后清空
+     * 2.创建完关键帧后清空
+     * 3.初始化重置时清空
+     * 4.每一帧来的时候插入
+     */
+    bool mbCreateNewKFAfterReloc;
+    bool mbRelocBiasPrepare;
+    void RecomputeIMUBiasAndCurrentNavstate(NavState& nscur);
+    // 20 Frames are used to compute bias
+    std::vector<Frame::Ptr> mv20FramesReloc;
+
+    // Predict the NavState of Current Frame by IMU
+    void PredictNavStateByIMU(bool bMapUpdated);
+    IMUPreintegrator mIMUPreIntInTrack;
+
+    bool TrackWithIMU(bool bMapUpdated=false);
+    bool TrackLocalMapWithIMU(bool bMapUpdated=false);
+
+    ImuConfigParam* mpParams;
+    cv::Mat GrabImageMonoVI(const cv::Mat &im, const std::vector<IMUData> &vimu, const double &timestamp);
+    // IMU Data since last KF. Append when new data is provided
+    // Should be cleared in 1. initialization beginning, 2. new keyframe created.
+    std::vector<IMUData> mvIMUSinceLastKF;
+    IMUPreintegrator GetIMUPreIntSinceLastKF(Frame::Ptr pCurF, KeyFrame::Ptr pLastKF, const std::vector<IMUData>& vIMUSInceLastKF);
+    IMUPreintegrator GetIMUPreIntSinceLastFrame(Frame::Ptr pCurF, Frame::Ptr pLastF);
+
 };
 
 }// namespce ssvo

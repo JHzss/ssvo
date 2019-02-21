@@ -4,6 +4,7 @@
 #include "global.hpp"
 #include "frame.hpp"
 #include "config.hpp"
+#include "src/IMU/imudata.hpp"
 
 using namespace Eigen;
 
@@ -108,6 +109,11 @@ private:
     bool finished_;
 
     bool verbose_;
+
+//! imu---------------------------
+public:
+    //! 好像没什么用
+    std::deque<std::vector<ssvo::IMUData>> imus_buffer_;
 };
 
 }//! namspace ssvo

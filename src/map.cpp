@@ -10,6 +10,13 @@ void Map::clear()
     mpts_.clear();
 }
 
+bool Map::checkKeyFrame(const KeyFrame::Ptr &kf)
+{
+    std::lock_guard<std::mutex> lock(mutex_kf_);
+    if(kfs_.count(kf->id_))
+        return false;
+}
+
 bool Map::insertKeyFrame(const KeyFrame::Ptr &kf)
 {
     std::lock_guard<std::mutex> lock(mutex_kf_);
@@ -54,6 +61,20 @@ std::vector<KeyFrame::Ptr> Map::getAllKeyFrames()
     return kfs;
 }
 
+std::vector<KeyFrame::Ptr> Map::getAllKeyFrames(const uint64_t id)
+{
+    std::lock_guard<std::mutex> lock(mutex_kf_);
+    std::vector<KeyFrame::Ptr> kfs;
+    kfs.reserve(kfs_.size());
+    for(const auto &kf : kfs_)
+    {
+        if(kf.first <= id)
+            kfs.push_back(kf.second);
+    }
+
+    return kfs;
+}
+
 KeyFrame::Ptr Map::getKeyFrame(uint64_t id)
 {
     std::lock_guard<std::mutex> lock(mutex_kf_);
@@ -84,6 +105,24 @@ uint64_t Map::MapPointsInMap()
 {
     std::lock_guard<std::mutex> lock(mutex_mpt_);
     return mpts_.size();
+}
+
+void Map::updateScale(double scale)
+{
+    std::lock_guard<std::mutex> lock1(mutex_kf_);
+    std::lock_guard<std::mutex> lock2(mutex_mpt_);
+
+    for (const auto &kf : kfs_)
+    {
+        SE3d Twc = kf.second->pose();
+        Twc.translation() *= scale;
+        kf.second->setPose(Twc);
+    }
+
+    for (const auto &mpt : mpts_)
+    {
+        mpt.second->updateScale(scale);
+    }
 }
 
 }

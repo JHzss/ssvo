@@ -22,6 +22,8 @@ public:
 
     std::vector<KeyFrame::Ptr> getAllKeyFrames();
 
+    std::vector<KeyFrame::Ptr> getAllKeyFrames(const uint64_t id);
+
     std::vector<MapPoint::Ptr> getAllMapPoints();
 
     uint64_t KeyFramesInMap();
@@ -29,8 +31,11 @@ public:
     uint64_t MapPointsInMap();
 
 private:
+//    Map();
 
     void clear();
+
+    bool checkKeyFrame(const KeyFrame::Ptr &kf);
 
     bool insertKeyFrame(const KeyFrame::Ptr &kf);
 
@@ -55,6 +60,10 @@ private:
     std::unordered_map<uint64_t, KeyFrame::Ptr> kfs_;
 
     std::unordered_map<uint64_t, MapPoint::Ptr> mpts_;
+
+//!imu ****************************************************
+public:
+    void updateScale(double scale);
 
 
 };

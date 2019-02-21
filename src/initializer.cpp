@@ -128,6 +128,7 @@ Initializer::Initializer(const FastDetector::Ptr &fast_detector, bool verbose):
 void Initializer::reset()
 {
     frame_buffer_.clear();
+    imus_buffer_.clear();
 
     p3ds_.clear();
     disparities_.clear();
@@ -190,7 +191,10 @@ bool Initializer::changeReference(int buffer_offset)
     const int buffer_size = frame_buffer_.size();
     buffer_offset = MIN(buffer_offset, buffer_size-1);
     for(int i = 0; i < buffer_offset; i++)
+    {
         frame_buffer_.pop_front();
+        imus_buffer_.pop_back();
+    }
 
     cand_ref_ = frame_buffer_.front();
     cand_ref_->createFts();
@@ -219,6 +223,7 @@ Initializer::Result Initializer::addImage(Frame::Ptr frame_cur)
     if(frame_buffer_.empty())
     {
         frame_buffer_.push_back(FrameCandidate::create(frame_cur));
+        imus_buffer_.push_back(frame_cur->mvIMUDataSinceLastFrame);
         cand_ref_ = frame_buffer_.front();
         createNewCorners(cand_ref_);
         cand_ref_->createFts();
@@ -236,6 +241,7 @@ Initializer::Result Initializer::addImage(Frame::Ptr frame_cur)
     //! create current candidate from last
     cand_cur_ = FrameCandidate::create(frame_cur, cand_last_);
     frame_buffer_.push_back(cand_cur_);
+    imus_buffer_.push_back(frame_cur->mvIMUDataSinceLastFrame);
     LOG_IF(INFO, verbose_) << "[INIT][*] Ref: " << cand_ref_->frame->id_
                            << ", Lst: " << cand_last_->frame->id_
                            << ", Cur: " << cand_cur_->frame->id_;

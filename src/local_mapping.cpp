@@ -5,6 +5,7 @@
 #include "image_alignment.hpp"
 #include "optimizer.hpp"
 #include "time_tracing.hpp"
+#include "add_math.hpp"
 
 #ifdef SSVO_DBOW_ENABLE
 #include <DBoW3/DescManip.h>
@@ -67,10 +68,19 @@ LocalMapper::LocalMapper(const FastDetector::Ptr fast, bool report, bool verbose
 
 }
 #ifdef SSVO_DBOW_ENABLE
-LocalMapper::LocalMapper(DBoW3::Vocabulary* vocabulary, DBoW3::Database* database,const FastDetector::Ptr fast, bool report, bool verbose) :
+LocalMapper::LocalMapper(DBoW3::Vocabulary* vocabulary, DBoW3::Database* database,const FastDetector::Ptr fast, ImuConfigParam* pParams, bool report, bool verbose) :
         fast_detector_(fast), report_(report), verbose_(report&&verbose),
-        mapping_thread_(nullptr), stop_require_(false), vocabulary_(vocabulary), database_(database)
+        mapping_thread_(nullptr), stop_require_(false), vocabulary_(vocabulary), database_(database),
+        RunningGBA_(false), FinishedGBA_(true), StopGBA_(false), thread_GBA_(NULL),
+        FullBAIdx_(0),update_finish_(false),loop_time_(0)
 {
+    mbVINSInited = false;
+    mbFirstTry = true;
+    mbFirstVINSInited = false;
+    mnLocalWindowSize = ImuConfigParam::GetLocalWindowSize();
+    mpParams = pParams;
+
+
     map_ = Map::create();
 
     brief_ = BRIEF::create(2.0, Config::imageNLevel());//,fast_detector_->getHeight(),fast_detector_->getWidth());
@@ -144,6 +154,72 @@ void LocalMapper::createInitalMap(const Frame::Ptr &frame_ref, const Frame::Ptr 
     insertKeyFrame(keyframe_ref);
     insertKeyFrame(keyframe_cur);
 
+//    map_->insertKeyFrame(keyframe_ref);
+//    map_->insertKeyFrame(keyframe_cur);
+
+    LOG_IF(INFO, report_) << "[Mapper] Creating inital map with " << map_->MapPointsInMap() << " map points";
+}
+
+void LocalMapper::createInitalMap(const Frame::Ptr &frame_ref, const Frame::Ptr &frame_cur,
+                                  std::vector<IMUData> &mvIMUSinceLastKF)
+{
+    map_->clear();
+
+    std::vector<IMUData> vimu1,vimu2;
+    for(size_t i=0; i<mvIMUSinceLastKF.size(); i++)
+    {
+        IMUData imu = mvIMUSinceLastKF[i];
+        if(imu._t < frame_ref->timestamp_)
+            vimu1.push_back(imu);
+        else
+            vimu2.push_back(imu);
+    }
+
+    //! create Key Frame
+    KeyFrame::Ptr keyframe_ref = KeyFrame::create(frame_ref,vimu1,NULL);
+    KeyFrame::Ptr keyframe_cur = KeyFrame::create(frame_cur,vimu2,keyframe_ref);
+
+//    if(keyframe_ref->GetNextKeyFrame() == keyframe_cur)
+//        std::cout<<"set true:"<<keyframe_ref->id_<<" "<<keyframe_cur->id_<<std::endl;
+//    else
+//        std::cout<<"set false"<<std::endl;
+//
+//    std::abort();
+
+    keyframe_ref->ComputePreInt();
+    keyframe_cur->ComputePreInt();
+    mvIMUSinceLastKF.clear();
+
+    //! before import, make sure the features are stored in the same order!
+    std::vector<Feature::Ptr> fts_ref = keyframe_ref->getFeatures();
+    std::vector<Feature::Ptr> fts_cur = keyframe_cur->getFeatures();
+
+    const size_t N = fts_ref.size();
+    LOG_ASSERT(N == fts_cur.size()) << "Error in create inital map! Two frames' features is not matched!";
+    for(size_t i = 0; i < N; i++)
+    {
+        fts_ref[i]->mpt_->addObservation(keyframe_ref, fts_ref[i]);
+        fts_cur[i]->mpt_->addObservation(keyframe_cur, fts_cur[i]);
+    }
+
+    for(const Feature::Ptr &ft : fts_ref)
+    {
+        map_->insertMapPoint(ft->mpt_);
+        ft->mpt_->resetType(MapPoint::STABLE);
+        ft->mpt_->updateViewAndDepth();
+//        addOptimalizeMapPoint(ft->mpt_);
+    }
+
+    keyframe_ref->setRefKeyFrame(keyframe_cur);
+    keyframe_cur->setRefKeyFrame(keyframe_ref);
+    keyframe_ref->updateConnections();
+    keyframe_cur->updateConnections();
+    insertKeyFrame(keyframe_ref);
+    insertKeyFrame(keyframe_cur);
+
+//    map_->insertKeyFrame(keyframe_ref);
+//    map_->insertKeyFrame(keyframe_cur);
+
     LOG_IF(INFO, report_) << "[Mapper] Creating inital map with " << map_->MapPointsInMap() << " map points";
 }
 
@@ -192,8 +268,11 @@ void LocalMapper::run()
     {
         finish_once_ = false;
         KeyFrame::Ptr keyframe_cur = checkNewKeyFrame();
+        mpCurrentKeyFrame = keyframe_cur;
+
         if(keyframe_cur)
         {
+            std::cout<<"LocalMapper deal new keyframe～"<<std::endl;
             mapTrace->startTimer("total");
             std::list<MapPoint::Ptr> bad_mpts;
             int new_seed_features = 0;
@@ -207,7 +286,31 @@ void LocalMapper::run()
                 LOG_IF(INFO, report_) << "[Mapper] create " << new_seed_features << " features from seeds and " << new_local_features << " from local map.";
 
                 mapTrace->startTimer("local_ba");
-                Optimizer::localBundleAdjustment(keyframe_cur, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, report_, verbose_);
+                if(!GetVINSInited())
+                {
+                    Optimizer::localBundleAdjustment(keyframe_cur, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, report_, verbose_);
+                }
+                else
+                {
+                    Optimizer::localBundleAdjustment(keyframe_cur, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, report_, verbose_);
+//                    Optimizer::LocalBAPRVIDP(keyframe_cur, mlLocalKeyFrames, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, mGravityVec, report_, verbose_);
+                }
+
+                if(!ImuConfigParam::GetRealTimeFlag())
+                {
+                    // Try to initialize VIO, if not inited
+                    if(!GetVINSInited())
+                    {
+                        bool tmpbool = TryInitVIO();
+                        SetVINSInited(tmpbool);
+                        if(tmpbool)
+                        {
+                            // Set initialization flag
+                            SetFirstVINSInited(true);
+                        }
+
+                    }
+                }
                 mapTrace->stopTimer("local_ba");
             }
             for(const MapPoint::Ptr &mpt : bad_mpts)
@@ -221,13 +324,16 @@ void LocalMapper::run()
             addToDatabase(keyframe_cur);
             mapTrace->stopTimer("dbow");
 
+            //todo 删除滑窗中关键帧是否需要对预积分的值进行处理，也就是
+            DeleteBadInLocalWindow();
+            AddToLocalWindow(mpCurrentKeyFrame);
+
             mapTrace->stopTimer("total");
             mapTrace->writeToFile();
 
             keyframe_last_ = keyframe_cur;
 
             loop_closure_->insertKeyFrame(keyframe_cur);
-
         }
         finish_once_ = true;
     }
@@ -263,6 +369,7 @@ void LocalMapper::insertKeyFrame(const KeyFrame::Ptr &keyframe)
     }
     else
     {
+//        map_->insertKeyFrame(keyframe);
         mapTrace->startTimer("total");
         std::list<MapPoint::Ptr> bad_mpts;
         int new_seed_features = 0;
@@ -992,5 +1099,1030 @@ void LocalMapper::setLoopCloser(LoopClosure::Ptr loop_closure)
 }
 
 #endif
+
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+bool LocalMapper::GetUpdatingInitPoses(void)
+{
+    std::unique_lock<std::mutex> lock(mMutexUpdatingInitPoses);
+    return mbUpdatingInitPoses;
+}
+
+void LocalMapper::SetUpdatingInitPoses(bool flag)
+{
+    std::unique_lock<std::mutex> lock(mMutexUpdatingInitPoses);
+    mbUpdatingInitPoses = flag;
+}
+
+KeyFrame::Ptr LocalMapper::GetMapUpdateKF()
+{
+    std::unique_lock<std::mutex> lock(mMutexMapUpdateFlag);
+    return mpMapUpdateKF;
+}
+
+bool LocalMapper::GetMapUpdateFlagForTracking()
+{
+    std::unique_lock<std::mutex> lock(mMutexMapUpdateFlag);
+    return mbMapUpdateFlagForTracking;
+}
+
+void LocalMapper::SetMapUpdateFlagInTracking(bool bflag)
+{
+    std::unique_lock<std::mutex> lock(mMutexMapUpdateFlag);
+    mbMapUpdateFlagForTracking = bflag;
+    if(bflag)
+    {
+        mpMapUpdateKF = mpCurrentKeyFrame;
+    }
+}
+
+bool LocalMapper::GetVINSInited(void)
+{
+    std::unique_lock<std::mutex> lock(mMutexVINSInitFlag);
+    return mbVINSInited;
+}
+
+void LocalMapper::SetVINSInited(bool flag)
+{
+    std::unique_lock<std::mutex> lock(mMutexVINSInitFlag);
+    mbVINSInited = flag;
+}
+
+bool LocalMapper::GetFirstVINSInited(void)
+{
+    std::unique_lock<std::mutex> lock(mMutexFirstVINSInitFlag);
+    return mbFirstVINSInited;
+}
+
+void LocalMapper::SetFirstVINSInited(bool flag)
+{
+    std::unique_lock<std::mutex> lock(mMutexFirstVINSInitFlag);
+    mbFirstVINSInited = flag;
+}
+
+Vector3d LocalMapper::GetGravityVec()
+{
+    return mGravityVec;
+}
+
+Eigen::Matrix3d LocalMapper::GetRwiInit()
+{
+    return mRwiInit;
+}
+
+void LocalMapper::VINSInitThread()
+{
+//    unsigned long initedid = 0;
+//    std::cerr<<"start VINSInitThread"<<std::endl;
+//    while(1)
+//    {
+//        if(KeyFrame::nNextId > 2)
+//            if(!GetVINSInited() && mpCurrentKeyFrame->mnId > initedid)
+//            {
+//                initedid = mpCurrentKeyFrame->mnId;
+//
+//                bool tmpbool = TryInitVIO();
+//                if(tmpbool)
+//                {
+//                    //SetFirstVINSInited(true);
+//                    //SetVINSInited(true);
+//                    break;
+//                }
+//            }
+//        usleep(3000);
+//        if(isFinished())
+//            break;
+//    }
+}
+
+
+//! 在LocalMapper中 只要地图中的关键帧的数目足够多就进行VIO初始化
+bool LocalMapper::TryInitVIO()
+{
+    std::cout<<"-----------------TryInitVIO------------------"<<mpCurrentKeyFrame->id_<<std::endl;
+    if(mpCurrentKeyFrame->id_ <= mnLocalWindowSize+1)
+    {
+        std::cout<<"-----no enough kf in mnLocalWindowSize-----"<<std::endl;
+        return false;
+    }
+
+    bool bVIOInited = true;
+
+
+    //! 判断时间，保证初始化的时间大于15秒，这里放的位置与VIORB不一样，因此求不出来这15秒内尺度等变量的优化曲线，只能得到一个优化的值。因为GBA太费时间了，还没有解决这个问题，因此不能每次都GBA
+//    bool bVIOInited = false;
+//    if(mbFirstTry)
+//    {
+//        mbFirstTry = false;
+//        mnStartTime = mpCurrentKeyFrame->timestamp_;
+//    }
+//    if(mpCurrentKeyFrame->timestamp_ - mnStartTime >= ImuConfigParam::GetVINSInitTime())
+//    {
+//        bVIOInited = true;
+//    } else
+//    {
+//        std::cout<<"No enough time to init!"<<std::endl;
+//        return false;
+//    }
+
+    //设置待保存量的文件
+
+    std::unique_lock<std::mutex> lock(map_->mutex_update_);
+
+    static bool fopened = false;
+
+    /**
+     * finit_traj 全局BA（步骤1）优化之后的轨迹
+     * finit_traj_afterScale 添加尺度之后的轨迹
+     * finit_traj_afterScale_gba 添加尺度后又GBA之后的轨迹
+     */
+    static std::ofstream fgw,fscale,fbiasa,fcondnum,ftime,fbiasg,finit_traj,finit_traj_afterScale,finit_traj_afterScale_gba;
+    string tmpfilepath = ImuConfigParam::getTmpFilePath();
+    //! save data
+    if(!fopened)
+    {
+        // Need to modify this to correct path
+        fgw.open(tmpfilepath+"gw.txt");
+        fscale.open(tmpfilepath+"scale.txt");
+        fbiasa.open(tmpfilepath+"biasa.txt");
+        //todo 这个是啥？
+        fcondnum.open(tmpfilepath+"condnum.txt");
+        ftime.open(tmpfilepath+"computetime.txt");
+        fbiasg.open(tmpfilepath+"biasg.txt");
+        finit_traj.open(tmpfilepath+"init_traj.txt");
+        finit_traj_afterScale.open(tmpfilepath+"init_traj_scale.txt");
+        finit_traj_afterScale_gba.open(tmpfilepath+"init_traj_scale_gba.txt");
+        if(fgw.is_open() && fscale.is_open() && fbiasa.is_open() &&
+           fcondnum.is_open() && ftime.is_open() && fbiasg.is_open())
+            fopened = true;
+        else
+        {
+            std::cerr<<"file open error in TryInitVIO"<<std::endl;
+            fopened = false;
+        }
+        fgw<<std::fixed<<std::setprecision(6);
+        fscale<<std::fixed<<std::setprecision(6);
+        fbiasa<<std::fixed<<std::setprecision(6);
+        fcondnum<<std::fixed<<std::setprecision(6);
+        ftime<<std::fixed<<std::setprecision(6);
+        fbiasg<<std::fixed<<std::setprecision(6);
+    }
+
+    //! 步骤1. 先进行全局BA
+    Optimizer::globleBundleAdjustment(map_,20,0,false,false);
+    RunningGBA_ = true;
+    FinishedGBA_ = false;
+    StopGBA_ = false;
+    thread_GBA_ = new std::thread(&LocalMapper::RunGlobalBundleAdjustment,this,mpCurrentKeyFrame->id_,false);
+//    release();
+    //必须等优化完才能进行下一步的优化，否则求出的尺度和位姿是不对应的，会有错
+    while(!FinishedGBA_)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+//    return true;
+
+    //保存 finit_traj 轨迹
+    finit_traj << std::fixed;
+    std::vector<KeyFrame::Ptr> kfs = map_->getAllKeyFrames();
+    std::sort(kfs.begin(),kfs.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->timestamp_<kf2->timestamp_;});
+
+    for(auto kf:kfs)
+    {
+        Sophus::SE3d frame_pose = kf->pose();//(*reference_keyframe_ptr)->Twc() * (*frame_pose_ptr);
+        Vector3d t = frame_pose.translation();
+        Quaterniond q = frame_pose.unit_quaternion();
+
+        finit_traj << std::setprecision(6) << kf->timestamp_ << " "
+                   << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+    }
+    finit_traj.close();
+
+    //设置用于变量估计的关键帧的各个状态变量，位姿、预积分等
+    Eigen::Matrix4d E_Tbc = ImuConfigParam::GetEigTbc();
+    Eigen::Matrix3d E_Rbc = E_Tbc.block<3,3>(0,0);
+    Eigen::Vector3d E_pbc = E_Tbc.block<3,1>(0,3);
+    Eigen::Matrix3d E_Rcb = E_Rbc.transpose();
+    Eigen::Vector3d E_pcb = -E_Rcb*E_pbc;
+
+    // Use all KeyFrames in map to compute
+    std::vector<KeyFrame::Ptr> vScaleGravityKF = map_->getAllKeyFrames(mpCurrentKeyFrame->id_);
+    //从小到大排序
+    std::sort(vScaleGravityKF.begin(),vScaleGravityKF.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->id_<kf2->id_;});
+    int N = vScaleGravityKF.size();
+    KeyFrame::Ptr pNewestKF = vScaleGravityKF[N-1];
+    std::vector<SE3d,Eigen::aligned_allocator<SE3d>> vE_Twc;
+    std::vector<IMUPreintegrator> vIMUPreInt;
+    std::vector<KeyFrameInit::Ptr> vKFInit;
+
+    for(int i=0;i<N;i++)
+    {
+        KeyFrame::Ptr pKF = vScaleGravityKF[i];
+        vE_Twc.push_back(pKF->Twc());
+
+        vIMUPreInt.push_back(pKF->GetIMUPreInt());
+        KeyFrameInit::Ptr pkfi = KeyFrameInit::Creat(pKF);
+        if(i!=0)
+        {
+            pkfi->mpPrevKeyFrame = vKFInit[i-1];
+        }
+        vKFInit.push_back(pkfi);
+    }
+
+    /** @brief 步骤2. 计算初始的陀螺仪bias，使用Gauss-Newton的优化方法。
+      * @ 计算结果： -0.0037  0.02217 0.0798
+      * @ 陀螺仪bias优化结果基本正确，说明关键帧的预积分过程中与陀螺仪bias相关的变量计算是正确的。
+      * @ 仅计算，未对关键帧的陀螺仪bias进行更新
+      */
+    Vector3d bgest = Optimizer::OptimizeInitialGyroBias(vE_Twc,vIMUPreInt);
+
+
+    //! 步骤3. 更新 biasg 并且重新预积分。关键帧中的预积分信息在ba，bg，g，都估计完事之后再更新。Update biasg and pre-integration in LocalWindow. Remember to reset back to zero
+    /*
+    ceres::Problem problem;
+    ceres::LossFunction *loss_function;
+    loss_function = new ceres::CauchyLoss(1.0);//降低外点的影响
+    double X[4];
+     */
+    for(int i=0;i<N;i++)
+        vKFInit[i]->bg = bgest;
+    for(int i=0;i<N;i++)
+        vKFInit[i]->ComputePreInt();
+
+
+    //! 步骤4. 估计尺度和重力向量（'world' frame (first KF's camera frame)）,并保存初始化变量的结果
+    Eigen::MatrixXd A{3*(N-2),4};
+    Eigen::VectorXd B{3*(N-2)};
+
+    Eigen::Matrix3d I3;
+    A.setZero();
+    B.setZero();
+    I3.setIdentity();
+
+    for(int i = 0; i<N-2; i++)
+    {
+        //KeyFrameInit* pKF1 = vKFInit[i];//vScaleGravityKF[i];
+        KeyFrameInit::Ptr pKF2 = vKFInit[i+1];
+        KeyFrameInit::Ptr pKF3 = vKFInit[i+2];
+        // Delta time between frames
+        double dt12 = pKF2->mIMUPreInt.getDeltaTime();
+        double dt23 = pKF3->mIMUPreInt.getDeltaTime();
+        // Pre-integrated measurements
+        Vector3d dp12 = pKF2->mIMUPreInt.getDeltaP();
+        Vector3d dv12 = pKF2->mIMUPreInt.getDeltaV();
+        Vector3d dp23 = pKF3->mIMUPreInt.getDeltaP();
+
+        SE3d Twc1 = vE_Twc[i];
+        SE3d Twc2 = vE_Twc[i+1];
+        SE3d Twc3 = vE_Twc[i+2];
+
+        Vector3d pc1 = Twc1.translation();
+        Vector3d pc2 = Twc2.translation();
+        Vector3d pc3 = Twc3.translation();
+
+        Matrix3d Rc1 = Twc1.rotationMatrix();
+        Matrix3d Rc2 = Twc2.rotationMatrix();
+        Matrix3d Rc3 = Twc3.rotationMatrix();
+
+        // Stack to A/B matrix
+        // lambda*s + beta*g = gamma
+        Vector3d lambda = (pc2-pc1)*dt23 + (pc2-pc3)*dt12;
+        Matrix3d beta = 0.5*I3*(dt12*dt12*dt23 + dt12*dt23*dt23);
+        Vector3d gamma = (Rc3-Rc2)*E_pcb*dt12 + (Rc1-Rc2)*E_pcb*dt23 + Rc1*E_Rcb*dp12*dt23 - Rc2*E_Rcb*dp23*dt12 - Rc1*E_Rcb*dv12*dt12*dt23;
+
+        A.block(3*i,0,3,1) = lambda;
+        A.block(3*i,1,3,3) = beta;
+        B.block(3*i,0,3,1) = gamma;
+        // Tested the formulation in paper, -gamma. Then the scale and gravity vector is -xx
+
+
+        /*
+         Matrix<double,3,4> A_;
+         Vector3d B_;
+         A_.block(0,0,3,1) = lambda;
+         A_.block(0,1,3,3) = beta;
+         B_ = gamma;
+
+         ceres::CostFunction* costFunction = ceres_slover::AlignmentError::Creat(A_,B_);
+         problem.AddResidualBlock(costFunction,loss_function,X);
+          */
+    }
+    // Use svd to compute A*x=B, x=[s,gw] 4x1 vector
+    // A = u*w*vt, u*w*vt*x=B
+    // w = ut*A*vt'
+    // Then x = vt'*winv*u'*B
+//    cv::Mat w,u,vt;
+    Eigen::MatrixXd u{3*(N-2),4};
+    Eigen::MatrixXd w{4,4};
+    VectorXd singular{4};
+    Eigen::Matrix<double,4,4> v,vt;
+    // Note w is 4x1 vector by SVDecomp()
+
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, ComputeThinU | ComputeThinV );
+    v = svd.matrixV();
+    vt = v.transpose();
+    u = svd.matrixU();
+//    w = u.transpose() * A * vt.transpose();
+    singular = svd.singularValues();
+
+    for(int i = 0 ; i <4; i++)
+        w(i,i) = singular[i];
+    // Compute winv
+    Eigen::Matrix4d winv = Eigen::Matrix4d::Identity();
+//    cv::Mat winv=cv::Mat::eye(4,4,CV_32F);
+    for(int i=0;i<4;i++)
+    {
+        //todo if can do this?
+        if(fabs(w(i,i))<1e-10)
+        {
+            w(i,i) += 1e-10;
+            std::cerr<<"w(i) < 1e-10, w="<<std::endl<<w<<std::endl;
+        }
+        winv(i,i) = 1./w(i,i);
+    }
+    // Then x = vt'*winv*u'*B
+    //todo LearnVIorb中用的是转置，为什么？
+    //! ceres 测试过，与求解出的结果一致
+    Matrix<double,4,1> x = vt.transpose() * winv * u.transpose() * B;
+
+    Vector3d g_tmp = x.block(1,0,3,1);
+
+    /*
+//    X[0] = x(0,0);
+//    X[1] = x(1,0);
+//    X[2] = x(2,0);
+//    X[3] = x(3,0);
+//    ceres::Solver::Options options;
+//
+//    options.linear_solver_type = ceres::DENSE_SCHUR;
+//    options.trust_region_strategy_type = ceres::DOGLEG;
+//    options.max_num_iterations = 10;
+//    ceres::Solver::Summary summary;
+//    ceres::Solve(options, &problem, &summary);
+//
+//    std::cout<<"Alignment report:"<<std::endl;
+//    std::cout<<summary.FullReport()<<std::endl;
+     */
+
+
+//    std::cout<<"x norm: "<<std::endl<<g_tmp.norm()<<std::endl;
+    Eigen::VectorXd Error{3*(N-2)};
+
+    Error = A*x - B;
+
+    std::cout<<"First Step Error=====> "<<Error.transpose()*Error<<std::endl;
+//
+//    x(0,0) = X[0];
+//    x(1,0) = X[1];
+//    x(2,0) = X[2];
+//    x(3,0) = X[3];
+//
+//    Error = A*x - B;
+//
+//    std::cout<<"Error new: "<<std::endl<<Error<<std::endl;
+//    std::abort();
+
+    // x=[s,gw] 4x1 vector
+    double sstar = x(0,0);    // scale should be positive
+    Vector3d gwstar = x.block(1,0,3,1);
+
+    // Debug log
+    //cout<<"scale sstar: "<<sstar<<endl;
+    //cout<<"gwstar: "<<gwstar.t()<<", |gwstar|="<<cv::norm(gwstar)<<endl;
+
+    //! 步骤5. 使用重力的magnitude 9.8约束
+    // gI = [0;0;1], the normalized gravity vector in an inertial frame, NED type with no orientation.
+
+    Vector3d gI;
+    gI.setZero();
+    gI[2] = 1;
+    // Normalized approx. gravity vecotr in world frame
+    Vector3d gwn = gwstar/gwstar.norm();
+    // Debug log
+    //cout<<"gw normalized: "<<gwn<<endl;
+
+    // vhat = (gI x gw) / |gI x gw|
+    Vector3d gIxgwn = gI.cross(gwn);
+    double normgIxgwn = gIxgwn.norm();
+    Vector3d vhat = gIxgwn/normgIxgwn;
+    double theta = std::atan2(normgIxgwn,gI.dot(gwn));
+    // Debug log
+    //cout<<"vhat: "<<vhat<<", theta: "<<theta*180.0/M_PI<<endl;
+
+    Eigen::Vector3d vhateig = vhat;
+    Eigen::Matrix3d RWIeig = Sophus::SO3d::exp(vhateig*theta).matrix();
+
+    Matrix3d Rwi = RWIeig;
+    Vector3d GI = gI * ImuConfigParam::GetG();//9.8012;
+    // Solve C*x=D for x=[s,dthetaxy,ba] (1+2+3)x1 vector
+
+    Eigen::MatrixXd C{3*(N-2),6};
+    Eigen::VectorXd D{3*(N-2)};
+
+    for(int i=0; i<N-2; i++)
+    {
+        KeyFrameInit::Ptr pKF2 = vKFInit[i+1];
+        KeyFrameInit::Ptr pKF3 = vKFInit[i+2];
+        // Delta time between frames
+        double dt12 = pKF2->mIMUPreInt.getDeltaTime();
+        double dt23 = pKF3->mIMUPreInt.getDeltaTime();
+        // Pre-integrated measurements
+
+        Vector3d dp12 = pKF2->mIMUPreInt.getDeltaP();
+        Vector3d dv12 = pKF2->mIMUPreInt.getDeltaV();
+        Vector3d dp23 = pKF3->mIMUPreInt.getDeltaP();
+
+        Eigen::Matrix3d Jpba12 = pKF2->mIMUPreInt.getJPBiasa();
+        Eigen::Matrix3d Jvba12 = pKF2->mIMUPreInt.getJVBiasa();
+        Eigen::Matrix3d Jpba23 = pKF3->mIMUPreInt.getJPBiasa();
+
+        SE3d Twc1 = vE_Twc[i];
+        SE3d Twc2 = vE_Twc[i+1];
+        SE3d Twc3 = vE_Twc[i+2];
+
+        Vector3d pc1 = Twc1.translation();
+        Vector3d pc2 = Twc2.translation();
+        Vector3d pc3 = Twc3.translation();
+
+        Matrix3d Rc1 = Twc1.rotationMatrix();
+        Matrix3d Rc2 = Twc2.rotationMatrix();
+        Matrix3d Rc3 = Twc3.rotationMatrix();
+
+        // Stack to C/D matrix
+        // lambda*s + phi*dthetaxy + zeta*ba = psi
+        Matrix<double,3,1> lambda = (pc2-pc1)*dt23 + (pc2-pc3)*dt12;
+        Matrix<double,3,3> phi = - 0.5*(dt12*dt12*dt23 + dt12*dt23*dt23)*Rwi*Sophus::SO3d::hat(GI);  // note: this has a '-', different to paper
+        Matrix<double,3,3> zeta = Rc2*E_Rcb*Jpba23*dt12 + Rc1*E_Rcb*Jvba12*dt12*dt23 - Rc1*E_Rcb*Jpba12*dt23;
+        Matrix<double,3,1> psi = (Rc1-Rc2)*E_pcb*dt23 + Rc1*E_Rcb*dp12*dt23 - (Rc2-Rc3)*E_pcb*dt12
+                      - Rc2*E_Rcb*dp23*dt12 - Rc1*E_Rcb*dv12*dt23*dt12 - 0.5*Rwi*GI*(dt12*dt12*dt23 + dt12*dt23*dt23); // note:  - paper
+
+        C.block(3*i,0,3,1) = lambda;
+        C.block(3*i,1,3,2) = phi.block(0,0,3,2);
+        C.block(3*i,3,3,3) = zeta;
+        D.block(3*i,0,3,1) = psi;
+//        lambda.copyTo(C.rowRange(3*i+0,3*i+3).col(0));
+//        phi.colRange(0,2).copyTo(C.rowRange(3*i+0,3*i+3).colRange(1,3)); //only the first 2 columns, third term in dtheta is zero, here compute dthetaxy 2x1.
+//        zeta.copyTo(C.rowRange(3*i+0,3*i+3).colRange(3,6));
+//        psi.copyTo(D.rowRange(3*i+0,3*i+3));
+
+        // Debug log
+        //cout<<"iter "<<i<<endl;
+    }
+    Eigen::MatrixXd u2{3*(N-2),6};
+    Eigen::MatrixXd w2{6,6};
+    VectorXd singular2{6};
+    Eigen::Matrix<double,6,6> v2,vt2;
+    // Note w is 4x1 vector by SVDecomp()
+    // A is changed in SVDecomp() with cv::SVD::MODIFY_A for speed
+
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd2(C, ComputeThinU | ComputeThinV );
+    v2 = svd2.matrixV();
+    vt2 = v2.transpose();
+    u2 = svd2.matrixU();
+//    w2 = u2.transpose() * C * vt2.transpose();
+    singular2 = svd2.singularValues();
+
+    for(int i = 0 ; i <6; i++)
+    {
+        w2(i,i) = singular2[i];
+    }
+
+    Eigen::Matrix<double,6,6> w2inv = Eigen::Matrix<double,6,6>::Identity();
+    for(int i=0;i<6;i++)
+    {
+        //todo if can do this?
+        if(fabs(w2(i,i))<1e-10)
+        {
+            w2(i,i) += 1e-10;
+            // Test log
+            std::cerr<<"w2(i) < 1e-10, w2="<<std::endl<<w2<<std::endl;
+        }
+
+        w2inv(i,i) = 1./w2(i,i);
+    }
+    // Then x = vt'*winv*u'*B
+    // Use svd to compute C*x=D, x=[s,dthetaxy,ba] 6x1 vector
+    // C = u*w*vt, u*w*vt*x=D
+    // Then x = vt'*winv*u'*D
+
+    // Then y = vt'*winv*u'*D
+    //todo LearnVIorb中用的是转置，为什么？
+    Matrix<double,6,1> y = vt2.transpose() * w2inv * u2.transpose() * D;
+
+
+    Eigen::VectorXd Error2{3*(N-2)};
+
+    Error2 = C*y - D;
+
+    std::cout<<"Second Step Error=====> "<<Error2.transpose()*Error2<<std::endl;
+
+    double s_ = y(0,0);
+    Matrix<double,2,1> dthetaxy = y.block(1,0,2,1);
+    Matrix<double,3,1> dbiasa_ = y.block(3,0,3,1);
+    Vector3d dbiasa_eig = dbiasa_;
+
+    // dtheta = [dx;dy;0]
+    Matrix<double,3,1> dtheta = Matrix<double,3,1>::Zero();
+    dtheta.block(0,0,2,1) = dthetaxy;
+
+    Eigen::Vector3d dthetaeig = dtheta;
+    // Rwi_ = Rwi*exp(dtheta)
+    Eigen::Matrix3d Rwieig_ = RWIeig * Sophus::SO3d::exp(dthetaeig).matrix();
+    Eigen::Matrix3d Rwi_ = Rwieig_;
+    // Debug log
+    {
+        Vector3d gwbefore = Rwi*GI;
+        Vector3d gwafter = Rwi_*GI;
+//        std::cout<<"Time: "<<->mTimeStamp - mnStartTime<<", sstar: "<<sstar<<", s: "<<s_<<std::endl;
+
+        fgw<<gwafter[0]<<" "<<gwafter[1]<<" "<<gwafter[2]<<" "
+           <<gwbefore[0]<<" "<<gwbefore[1]<<" "<<gwbefore[2]<<" "
+           <<std::endl;
+        fscale<<s_<<" "<<sstar<<" "<<std::endl;
+        fbiasa<<dbiasa_(0,0)<<" "<<dbiasa_(1,0)<<" "<<dbiasa_(2,0)<<" "<<std::endl;
+//        fcondnum<<w2(0,0)<<" "<<w2(1,0)<<" "<<w2(2,0)<<" "<<w2.at<float>(3)<<" "
+//                <<w2.at<float>(4)<<" "<<w2.at<float>(5)<<" "<<std::endl;
+        //        ftime<<mpCurrentKeyFrame->mTimeStamp<<" "
+        //             <<(t3-t0)/cv::getTickFrequency()*1000<<" "<<endl;
+        fbiasg<<bgest(0)<<" "<<bgest(1)<<" "<<bgest(2)<<" "<<std::endl;
+
+        std::ofstream fRwi(tmpfilepath+"Rwi.txt");
+        fRwi<<Rwieig_(0,0)<<" "<<Rwieig_(0,1)<<" "<<Rwieig_(0,2)<<" "
+            <<Rwieig_(1,0)<<" "<<Rwieig_(1,1)<<" "<<Rwieig_(1,2)<<" "
+            <<Rwieig_(2,0)<<" "<<Rwieig_(2,1)<<" "<<Rwieig_(2,2)<<std::endl;
+        fRwi.close();
+    }
+
+    std::cout<<"Finish calculate bg s g ba!"<<std::endl;
+
+    // todo: 怎么判断初始化的结果？ Add some logic or strategy to confirm init status
+
+    if(bVIOInited)
+    {
+        // Set NavState , scale and bias for all KeyFrames
+        // Scale
+        double scale = s_;
+        mnVINSInitScale = s_;
+        // gravity vector in world frame
+        Vector3d gw = Rwi_*GI;
+        mGravityVec = gw;
+        Vector3d gweig = gw;
+        mRwiInit = Rwi_;
+
+//        scale = 1;
+        //! 步骤6. 更新关键帧的状态
+        std::cout<<"<================= Begin update pose and v =================>"<<std::endl;
+        SetUpdatingInitPoses(true);
+        {
+//            while(update_finish_)
+//            {
+//                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+//            }
+            int cnt=0;
+
+            //! 设置速度
+            for(std::vector<KeyFrame::Ptr>::const_iterator vit=vScaleGravityKF.begin(), vend=vScaleGravityKF.end(); vit!=vend; vit++,cnt++)
+            {
+                KeyFrame::Ptr pKF = *vit;
+                if(pKF->isBad()) continue;
+                if(pKF!=vScaleGravityKF[cnt]) std::cerr<<"pKF!=vScaleGravityKF[cnt], id: "<<pKF->id_<<" != "<<vScaleGravityKF[cnt]->id_<<std::endl;
+                // Position and rotation of visual SLAM
+                Vector3d wPc = pKF->Twc().translation();                   // wPc
+                Matrix3d Rwc = pKF->Twc().rotationMatrix();            // Rwc
+                // Set position and rotation of navstate
+                Vector3d wPb = scale*wPc + Rwc*E_pcb;
+                pKF->SetNavStatePos(wPb);
+                pKF->SetNavStateRot(Rwc*E_Rcb);
+                // Update bias of Gyr & Acc
+                pKF->SetNavStateBiasGyr(bgest);
+                pKF->SetNavStateBiasAcc(dbiasa_eig);
+                // Set delta_bias to zero. (only updated during optimization)
+                pKF->SetNavStateDeltaBg(Eigen::Vector3d::Zero());
+                pKF->SetNavStateDeltaBa(Eigen::Vector3d::Zero());
+                // Step 4.
+                // compute velocity
+                if(pKF != vScaleGravityKF.back())
+                {
+                    KeyFrame::Ptr pKFnext = pKF->GetNextKeyFrame();
+                    if(!pKFnext) std::cerr<<"pKFnext is NULL, cnt="<<cnt<<" pkf id:"<<pKF->id_<<", pKFnext:"<<pKFnext<<std::endl;
+                    if(pKFnext!=vScaleGravityKF[cnt+1]) std::cerr<<"pKFnext!=vScaleGravityKF[cnt+1], cnt="<<cnt<<", id: "<<pKFnext->id_<<" != "<<vScaleGravityKF[cnt+1]->id_<<std::endl;
+                    // IMU pre-int between pKF ~ pKFnext
+                    const IMUPreintegrator& imupreint = pKFnext->GetIMUPreInt();
+                    // Time from this(pKF) to next(pKFnext)
+                    double dt = imupreint.getDeltaTime();                                       // deltaTime
+
+                    Eigen::Vector3d dp = imupreint.getDeltaP();       // deltaP
+                    Eigen::Matrix3d Jpba = imupreint.getJPBiasa();    // J_deltaP_biasa
+                    Vector3d wPcnext = pKFnext->Twc().translation();           // wPc next
+                    Matrix3d Rwcnext = pKFnext->Twc().rotationMatrix();    // Rwc next
+
+                    Eigen::Vector3d vel = - 1./dt*( scale*(wPc - wPcnext) + (Rwc - Rwcnext)*E_pcb + Rwc*E_Rcb*(dp + Jpba*dbiasa_) + 0.5*gw*dt*dt );
+
+//                    std::cout<<"kf"<<pKF->id_<<"-vel:"<<vel.transpose()<<std::endl;
+                    pKF->SetNavStateVel(vel);
+                }
+                else
+                {
+                    std::cout<<"-----------here is the last KF in vScaleGravityKF------------"<<std::endl;
+                    // If this is the last KeyFrame, no 'next' KeyFrame exists
+                    KeyFrame::Ptr pKFprev = pKF->GetPrevKeyFrame();
+                    LOG_ASSERT(pKFprev)<<"pKFprev is NULL, cnt="<<cnt<<std::endl;
+                    if(pKFprev!=vScaleGravityKF[cnt-1]) std::cerr<<"pKFprev!=vScaleGravityKF[cnt-1], cnt="<<cnt<<", id: "<<pKFprev->id_<<" != "<<vScaleGravityKF[cnt-1]->id_<<std::endl;
+                    const IMUPreintegrator& imupreint_prev_cur = pKF->GetIMUPreInt();
+                    double dt = imupreint_prev_cur.getDeltaTime();
+                    Eigen::Matrix3d Jvba = imupreint_prev_cur.getJVBiasa();
+                    Eigen::Vector3d dv = imupreint_prev_cur.getDeltaV();
+                    //
+                    Eigen::Vector3d velpre = pKFprev->GetNavState().Get_V();
+                    Eigen::Matrix3d rotpre = pKFprev->GetNavState().Get_RotMatrix();
+                    Eigen::Vector3d veleig = velpre + gweig*dt + rotpre*( dv + Jvba*dbiasa_eig );
+                    pKF->SetNavStateVel(veleig);
+//                    std::cout<<"kf"<<pKF->id_<<"-vel:"<<veleig.transpose()<<std::endl;
+
+                }
+            }
+//            std::abort();
+            std::cout<<"Finish update V"<<std::endl;
+
+            //! 步骤7. 跟新所有的变量后，重新计算预积分的值
+            for(std::vector<KeyFrame::Ptr>::const_iterator vit=vScaleGravityKF.begin(), vend=vScaleGravityKF.end(); vit!=vend; vit++)
+            {
+                KeyFrame::Ptr pKF = *vit;
+                if(pKF->isBad()) continue;
+                pKF->ComputePreInt();
+            }
+
+//            return true;
+            //! 更新关键帧和地图点的位姿（乘上尺度）
+
+//            std::cout<<"correct pose?"<<std::endl;
+//            std::unique_lock<std::mutex> lock1(update_finish_mutex_);
+//            for(std::vector<KeyFrame::Ptr>::const_iterator vit=vScaleGravityKF.begin(), vend=vScaleGravityKF.end(); vit!=vend; vit++)
+//            {
+//                KeyFrame::Ptr pKF = *vit;
+//                pKF->beforeUpdate_Tcw_ = pKF->Tcw();
+//            }
+//            setStop();
+//            if(update_finish_ == false)
+//            {
+//                std::cout<<"correct pose?"<<std::endl;
+//                std::unique_lock<std::mutex> lock1(update_finish_mutex_);
+//                for(std::vector<KeyFrame::Ptr>::const_iterator vit=vScaleGravityKF.begin(), vend=vScaleGravityKF.end(); vit!=vend; vit++)
+//                {
+//                    KeyFrame::Ptr pKF = *vit;
+//                    pKF->beforeUpdate_Tcw_ = pKF->Tcw();
+//                }
+//                update_finish_ = true;
+//            }
+
+
+            std::vector<KeyFrame::Ptr> mspKeyFrames = map_->getAllKeyFrames();
+            for(std::vector<KeyFrame::Ptr>::iterator sit=mspKeyFrames.begin(), send=mspKeyFrames.end(); sit!=send; sit++)
+            {
+                KeyFrame::Ptr pKF = *sit;
+                SE3d Tcw = pKF->Tcw();
+                Matrix3d Rcw = Tcw.rotationMatrix();
+                Vector3d tcw = Tcw.translation() *scale;
+                Tcw = Sophus::SE3d(Rcw,tcw);
+                pKF->setTcw(Tcw);
+            }
+
+            std::vector<MapPoint::Ptr> mspMapPoints = map_->getAllMapPoints();
+            for(std::vector<MapPoint::Ptr>::iterator sit=mspMapPoints.begin(), send=mspMapPoints.end(); sit!=send; sit++)
+            {
+                MapPoint::Ptr pMP = *sit;
+                pMP->updateScale(scale);
+                pMP->updateViewAndDepth();
+            }
+            std::cout<<std::endl<<"... Map scale updated ..."<<std::endl<<std::endl;
+
+//            update_finish_ = true;
+//            release();
+
+
+            //! 将没有参与初始化的关键帧的NavState也设置一下
+            if(pNewestKF != mpCurrentKeyFrame)
+            {
+                KeyFrame::Ptr pKF;
+                // step1. bias&d_bias
+                pKF = pNewestKF;
+                while(pKF->id_ < mpCurrentKeyFrame->id_)
+                {
+                    std::cout<<"mpCurrentKeyFrame id: "<<mpCurrentKeyFrame->id_<<std::endl;
+                    std::cout<<"pKF id: "<<pKF->id_<<std::endl;
+                    pKF = pKF->GetNextKeyFrame();
+                    std::cout<<"pKF id: "<<pKF->id_<<std::endl;
+                    // Update bias of Gyr & Acc
+                    pKF->SetNavStateBiasGyr(bgest);
+                    pKF->SetNavStateBiasAcc(dbiasa_eig);
+                    // Set delta_bias to zero. (only updated during optimization)
+                    pKF->SetNavStateDeltaBg(Eigen::Vector3d::Zero());
+                    pKF->SetNavStateDeltaBa(Eigen::Vector3d::Zero());
+                }
+
+
+                // step2. re-compute pre-integration
+                //！ 然后进行重新积分
+                pKF = pNewestKF;
+                while(pKF->id_ < mpCurrentKeyFrame->id_)
+                {
+                    pKF = pKF->GetNextKeyFrame();
+
+                    pKF->ComputePreInt();
+                }
+
+                // step3. update pos/rot
+                pKF = pNewestKF;
+
+                //todo 与viorb不同，因为localmapper队列与map的时序问题，产生一点问题
+                while(pKF->id_ < mpCurrentKeyFrame->id_)
+                {
+                    pKF = pKF->GetNextKeyFrame();
+
+                    // Update rot/pos
+                    // Position and rotation of visual SLAM
+                    Vector3d wPc = pKF->Twc().translation();                   // wPc
+                    Matrix3d Rwc = pKF->Twc().rotationMatrix();            // Rwc
+                    Vector3d wPb = wPc + Rwc*E_pcb;
+                    pKF->SetNavStatePos(wPb);
+                    pKF->SetNavStateRot(Rwc*E_Rcb);
+
+                    //pKF->SetNavState();
+
+                    if(pKF != mpCurrentKeyFrame)
+                    {
+                        KeyFrame::Ptr pKFnext = pKF->GetNextKeyFrame();
+                        // IMU pre-int between pKF ~ pKFnext
+                        const IMUPreintegrator& imupreint = pKFnext->GetIMUPreInt();
+                        // Time from this(pKF) to next(pKFnext)
+                        double dt = imupreint.getDeltaTime();                                       // deltaTime
+
+                        Eigen::Vector3d dp = imupreint.getDeltaP();       // deltaP
+                        Eigen::Matrix3d Jpba = imupreint.getJPBiasa();    // J_deltaP_biasa
+                        Vector3d wPcnext = pKFnext->Twc().translation();           // wPc next
+                        Matrix3d Rwcnext = pKFnext->Twc().rotationMatrix();    // Rwc next
+
+                        Eigen::Vector3d vel = - 1./dt*((wPc - wPcnext) + (Rwc - Rwcnext)*E_pcb + Rwc*E_Rcb*(dp + Jpba*dbiasa_) + 0.5*gw*dt*dt );
+                        Eigen::Vector3d veleig = vel;
+                        pKF->SetNavStateVel(veleig);
+
+                    }
+                    else
+                    {
+                        // If this is the last KeyFrame, no 'next' KeyFrame exists
+                        KeyFrame::Ptr pKFprev = pKF->GetPrevKeyFrame();
+                        const IMUPreintegrator& imupreint_prev_cur = pKF->GetIMUPreInt();
+                        double dt = imupreint_prev_cur.getDeltaTime();
+                        Eigen::Matrix3d Jvba = imupreint_prev_cur.getJVBiasa();
+                        Eigen::Vector3d dv = imupreint_prev_cur.getDeltaV();
+                        //
+                        Eigen::Vector3d velpre = pKFprev->GetNavState().Get_V();
+                        Eigen::Matrix3d rotpre = pKFprev->GetNavState().Get_RotMatrix();
+                        Eigen::Vector3d veleig = velpre + gweig*dt + rotpre*( dv + Jvba*dbiasa_eig );
+                        pKF->SetNavStateVel(veleig);
+                    }
+
+                }
+            }
+            std::cout<<std::endl<<"... Map NavState updated ..."<<std::endl<<std::endl;
+            SetFirstVINSInited(true);
+            SetVINSInited(true);
+        }
+        SetUpdatingInitPoses(false);
+
+
+        //! 保存加上尺度的轨迹
+        finit_traj_afterScale << std::fixed;
+        std::vector<KeyFrame::Ptr> kfs_scale = map_->getAllKeyFrames();
+        std::sort(kfs_scale.begin(),kfs_scale.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->timestamp_<kf2->timestamp_;});
+        for(auto kf:kfs_scale)
+        {
+            Sophus::SE3d frame_pose = kf->pose();//(*reference_keyframe_ptr)->Twc() * (*frame_pose_ptr);
+            Vector3d t = frame_pose.translation();
+            Quaterniond q = frame_pose.unit_quaternion();
+            finit_traj_afterScale << std::setprecision(6) << kf->timestamp_ << " "
+                                  << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+        }
+        finit_traj_afterScale.close();
+
+        //! 保存各个帧的 bias
+
+        // Run global BA after inited
+        uint64_t nGBAKF = mpCurrentKeyFrame->id_;
+        RunningGBA_ = true;
+        FinishedGBA_ = false;
+        StopGBA_ = false;
+        thread_GBA_ = new std::thread(&LocalMapper::RunGlobalBundleAdjustment,this,nGBAKF,true);
+        while(!FinishedGBA_)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        finit_traj_afterScale_gba << std::fixed;
+        std::vector<KeyFrame::Ptr> kfs_scale_gba = map_->getAllKeyFrames();
+        std::sort(kfs_scale_gba.begin(),kfs_scale_gba.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->timestamp_<kf2->timestamp_;});
+        for(auto kf:kfs_scale_gba)
+        {
+            Sophus::SE3d frame_pose = kf->pose();//(*reference_keyframe_ptr)->Twc() * (*frame_pose_ptr);
+            Vector3d t = frame_pose.translation();
+            Quaterniond q = frame_pose.unit_quaternion();
+            finit_traj_afterScale_gba << std::setprecision(6) << kf->timestamp_ << " "
+                                  << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+        }
+        finit_traj_afterScale_gba.close();
+
+
+        //todo 优化为参与globa BA的关键帧的位姿
+
+        std::cout<<"==============Finish global BA after v-i init================"<<std::endl;
+
+        SetFlagInitGBAFinish(true);
+
+        SetMapUpdateFlagInTracking(true);
+
+//        update_finish_ = true;
+        release();
+    }
+
+    std::cout<<"-----------------End InitVIO------------------"<<std::endl;
+//    std::abort();
+    return bVIOInited;
+}
+
+void LocalMapper::AddToLocalWindow(KeyFrame::Ptr pKF)
+{
+    mlLocalKeyFrames.push_back(pKF);
+    if(mlLocalKeyFrames.size() > mnLocalWindowSize)
+    {
+        mlLocalKeyFrames.pop_front();
+    }
+    else
+    {
+        KeyFrame::Ptr pKF0 = mlLocalKeyFrames.front();
+        while(mlLocalKeyFrames.size() < mnLocalWindowSize && pKF0->GetPrevKeyFrame()!=NULL)
+        {
+            pKF0 = pKF0->GetPrevKeyFrame();
+            mlLocalKeyFrames.push_front(pKF0);
+        }
+    }
+}
+
+void LocalMapper::DeleteBadInLocalWindow(void)
+{
+    std::list<KeyFrame::Ptr>::iterator lit = mlLocalKeyFrames.begin();
+    while(lit != mlLocalKeyFrames.end())
+    {
+        KeyFrame::Ptr pKF = *lit;
+        //Test log
+        if(!pKF) std::cout<<"pKF null?"<<std::endl;
+        if(pKF->isBad())
+        {
+            lit = mlLocalKeyFrames.erase(lit);
+        }
+        else
+        {
+            lit++;
+        }
+    }
+}
+
+void LocalMapper::RunGlobalBundleAdjustment(uint64_t nLoopKF,bool vi)
+{
+    LOG(WARNING) << "LocalMapping] Starting Global Bundle Adjustment! " << std::endl;
+
+//    int idx = FullBAIdx_;
+
+    if(vi)
+    {
+//        Optimizer::globleBundleAdjustment(map_, 10, nLoopKF, true, true);
+        Optimizer::GlobalBundleAdjustmentNavStatePRV(map_,mGravityVec,20,nLoopKF,false,false);
+    }
+    else
+        Optimizer::globleBundleAdjustment(map_, 10, nLoopKF, true, true);
+
+    {
+//        std::unique_lock<std::mutex> lock(mutex_GBA_);
+//        if(idx != FullBAIdx_)
+//            return;
+        if(!StopGBA_)
+        {
+            LOG(WARNING) << "[LocalMapper] Global Bundle Adjustment finished" << std::endl;
+            LOG(WARNING) << "[LocalMapper] Updating map ..." << std::endl;
+            setStop();
+
+            while(!isRequiredStop())
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+
+            std::vector<KeyFrame::Ptr > kfs = map_->getAllKeyFrames();
+            std::vector<MapPoint::Ptr > mpts = map_->getAllMapPoints();
+            std::list<KeyFrame::Ptr > kfs_miss;
+
+            if(!vi)
+            {
+                for(KeyFrame::Ptr kf:kfs)
+                {
+                    std::cout<<kf->id_<<"save beforeUpdate_Tcw_"<<std::endl;
+                    kf->beforeUpdate_Tcw_ = kf->Tcw();
+                }
+            }
+
+            for (int iK = 0; iK < kfs.size(); ++iK)
+            {
+                KeyFrame::Ptr kf = kfs[iK];
+                kf->updateConnections();
+
+                kf->beforeGBA_Tcw_ = kf->Tcw();
+
+                if(kf->GBA_KF_ != nLoopKF)
+                {
+                    kfs_miss.push_back(kf);
+                    break;
+                }
+
+                kf->setTcw(kf->optimal_Tcw_);
+            }
+
+            int iter = 0;
+            while(!kfs_miss.empty())
+            {
+                iter ++;
+                KeyFrame::Ptr kf = kfs_miss.front();
+                std::set<KeyFrame::Ptr > connectedKeyFrames = kf->getConnectedKeyFrames(5+iter,-1);
+                for(KeyFrame::Ptr rkf:connectedKeyFrames)
+                {
+                    if(rkf->GBA_KF_ == nLoopKF)
+                    {
+                        SE3d Tci_c = kf->Tcw() * (rkf->beforeGBA_Tcw_.inverse());
+                        kf->optimal_Tcw_ = Tci_c * (rkf->optimal_Tcw_);
+                        kf->GBA_KF_ = nLoopKF;
+                        kf->setTcw(kf->optimal_Tcw_);
+                        break;
+                    }
+                }
+                if(kf->GBA_KF_ != nLoopKF)
+                {
+                    kfs_miss.push_back(kf);
+                    break;
+                }
+                kfs_miss.pop_front();
+            }
+            LOG_ASSERT(kfs_miss.size() ==0 )<<"There are some independent kfs.";
+
+            for (int iM = 0; iM < mpts.size(); ++iM)
+            {
+                MapPoint::Ptr mpt = mpts[iM];
+
+                if(mpt->isBad())
+                    continue;
+
+                if(mpt->GBA_KF_ == nLoopKF)
+                    mpt->setPose(mpt->optimal_pose_);
+                else
+                {
+                    KeyFrame::Ptr rkf = mpt->getReferenceKeyFrame();
+                    Vector3d Pcb =  rkf->beforeGBA_Tcw_ * mpt->pose();
+                    mpt->optimal_pose_ = rkf->Twc() * Pcb;
+                    mpt->setPose(mpt->optimal_pose_);
+                }
+
+            }
+            LOG(WARNING) << "[LoopClosure] Map updated!";
+
+            bool traj_afterGBA = true;
+            if(traj_afterGBA)
+            {
+                std::sort(kfs.begin(),kfs.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->timestamp_<kf2->timestamp_;});
+                std::string trajAfterGBA = "traj_afterGBA.txt";
+                std::ofstream f_trajAfterGBA;
+                f_trajAfterGBA.open(trajAfterGBA.c_str());
+                f_trajAfterGBA << std::fixed;
+                for(KeyFrame::Ptr kf:kfs)
+                {
+                    Sophus::SE3d frame_pose = kf->pose();//(*reference_keyframe_ptr)->Twc() * (*frame_pose_ptr);
+                    Vector3d t = frame_pose.translation();
+                    Quaterniond q = frame_pose.unit_quaternion();
+
+                    f_trajAfterGBA << std::setprecision(6) << kf->timestamp_ << " "
+                                   << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+
+                }
+                f_trajAfterGBA.close();
+                std::cout<<"traj_afterGBA saved!"<<std::endl;
+            }
+
+            release();
+
+        }
+        FinishedGBA_ = true;
+        RunningGBA_ = false;
+        update_finish_ = true;
+
+
+    }
+}
 
 }

@@ -70,7 +70,16 @@ void Optimizer::globleBundleAdjustment(const Map::Ptr &map, int max_iters,const 
     if (map->KeyFramesInMap() < 2)
         return;
 
-    std::vector<KeyFrame::Ptr> all_kfs = map->getAllKeyFrames();
+    std::vector<KeyFrame::Ptr> all_kfs;
+    if(nLoopKF ==0)
+    {
+        all_kfs = map->getAllKeyFrames();
+    }
+    else
+    {
+        all_kfs = map->getAllKeyFrames(nLoopKF);
+    }
+
     std::vector<MapPoint::Ptr> all_mpts = map->getAllMapPoints();
 
     static double focus_length = MIN(all_kfs.back()->cam_->fx(), all_kfs.back()->cam_->fy());
@@ -127,14 +136,14 @@ void Optimizer::globleBundleAdjustment(const Map::Ptr &map, int max_iters,const 
     else
     {
         //! set flag
-    for(auto kf:all_kfs)
-    {
-        kf->GBA_KF_ = nLoopKF;kf->beforeGBA_Tcw_ = kf->Tcw();
-    }
-    for(auto mpt:all_mpts)
-    {
-        mpt->GBA_KF_ = nLoopKF;
-    }
+        for(auto kf:all_kfs)
+        {
+            kf->GBA_KF_ = nLoopKF;kf->beforeGBA_Tcw_ = kf->Tcw();
+        }
+        for(auto mpt:all_mpts)
+        {
+            mpt->GBA_KF_ = nLoopKF;
+        }
 
     }
 
@@ -981,4 +990,334 @@ void Optimizer::OptimizeEssentialGraph(Map::Ptr pMap, KeyFrame::Ptr pLoopKF, Key
 
 }
 
+
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+    /**
+     * 计算陀螺仪bias
+     * @param vTwc [in]
+     * @param vImuPreInt [in]
+     * @return 计算得到的bg
+     */
+Vector3d Optimizer::OptimizeInitialGyroBias(const std::vector<SE3d,Eigen::aligned_allocator<SE3d>>& vTwc, const std::vector<IMUPreintegrator>& vImuPreInt)
+{
+    int N = vTwc.size();
+    LOG_ASSERT(vTwc.size()==vImuPreInt.size())<<"vTwc.size()!=vImuPreInt.size()"<<std::endl;
+
+    Matrix4d Tbc = ImuConfigParam::GetEigTbc();
+    Matrix3d Rcb = Tbc.topLeftCorner(3,3).transpose();
+
+    ceres::Problem problem;
+
+    //!仅有这一个优化变量
+    Vector3d vBiasg;
+    vBiasg.setZero();
+    problem.AddParameterBlock(vBiasg.data(),3);
+
+    for (int i = 0; i < N; ++i)
+    {
+        // 第一帧的预积分没有意义，忽略
+        if(i==0)
+            continue;
+        //上一个关键帧的位姿
+        const SE3d Twi = vTwc[i-1];
+        Matrix3d Rwci = Twi.rotationMatrix();
+        //下一帧关键帧的位姿
+        const SE3d Twj = vTwc[i];
+        Matrix3d Rwcj = Twj.rotationMatrix();
+
+        const IMUPreintegrator& imupreint = vImuPreInt[i];
+
+        Matrix3d dRbij = imupreint.getDeltaR();
+        Matrix3d J_dR_bg = imupreint.getJRBiasg();
+        Matrix3d Rwbi = Rwci*Rcb;
+        Matrix3d Rwbj = Rwcj*Rcb;
+
+        ceres::CostFunction* costFunction = ceres_slover::GyrBiasError::Creat(dRbij,J_dR_bg,Rwbi,Rwbj);
+        problem.AddResidualBlock(costFunction,NULL,vBiasg.data());
+    }
+
+    ceres::Solver::Options options;
+    ceres::Solver::Summary summary;
+    options.linear_solver_type = ceres::DENSE_SCHUR;
+    options.trust_region_strategy_type = ceres::DOGLEG;
+    options.max_linear_solver_iterations = 20;
+
+    ceres::Solve(options, &problem, &summary);
+
+    std::cout<<"OptimizeInitialGyroBias FullReport()"<<std::endl;
+    std::cout<<summary.FullReport()<<std::endl;
+
+    return vBiasg;
 }
+
+void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d &gw, int nIterations,const uint64_t nLoopKF, bool report, bool verbose)
+{
+    if (pMap->KeyFramesInMap() < 2)
+        return;
+
+    // Extrinsics
+    Matrix4d Tbc = ImuConfigParam::GetEigTbc();
+    Sophus::SE3d Tbc_ = Sophus::SE3d(Tbc);
+    Matrix3d Rbc = Tbc.topLeftCorner(3,3);
+    Vector3d Pbc = Tbc.topRightCorner(3,1);
+
+    // Gravity vector in world frame
+    Vector3d GravityVec = gw;
+
+    std::vector<KeyFrame::Ptr> vpKFs = pMap->getAllKeyFrames(nLoopKF);
+    std::vector<MapPoint::Ptr> vpMP = pMap->getAllMapPoints();
+    std::vector<bool> vbNotIncludedMP;
+    vbNotIncludedMP.resize(vpMP.size());
+
+    std::sort(vpKFs.begin(),vpKFs.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->id_ > kf2->id_;});
+
+
+    static double focus_length = MIN(vpKFs.back()->cam_->fx(), vpKFs.back()->cam_->fy());
+    static double pixel_usigma = Config::imagePixelSigma() / focus_length;
+
+    ceres::Problem problem;
+
+    // 添加关键帧的变量
+    for (const KeyFrame::Ptr &kf : vpKFs)
+    {
+        std::cout<<"kf->id : "<<kf->id_<<std::endl;
+        kf->UpdateNavStatePVRFromTcw(kf->Tcw(),Tbc_);
+        kf->setOptimizationState();
+        ceres::LocalParameterization* local_parameterization_pr = new ceres_slover::PRParameterization();
+//        ceres::LocalParameterization* local_parameterization_bias = new ceres_slover::BiasParameterization();
+        problem.AddParameterBlock(kf->optimal_PR_.data(), 6, local_parameterization_pr);
+        problem.AddParameterBlock(kf->optimal_v_.data(),3);
+        problem.AddParameterBlock(kf->optimal_detla_bias_.data(),6/*,local_parameterization_bias*/);
+
+        if(kf->id_ == 0)
+        {
+            problem.SetParameterBlockConstant(kf->optimal_PR_.data());
+//            problem.SetParameterBlockConstant(kf->optimal_detla_bias_.data());
+        }
+    }
+
+    const double thHuberNavStatePRV = sqrt(100*21.666);
+    const double thHuberNavStateBias = sqrt(100*16.812);
+
+    double scale = pixel_usigma * sqrt(4);
+    ceres::LossFunction* lossfunctionPRV = new ceres::HuberLoss(thHuberNavStatePRV);
+    ceres::LossFunction* lossfunctionBias = new ceres::HuberLoss(thHuberNavStateBias);
+    ceres::LossFunction* lossfunctionMpt = new ceres::HuberLoss(scale);
+
+    //todo 设置协方差矩阵
+    //! 视觉误差-重投影误差（公式5）
+
+    int vision_item = 0;
+    for (const MapPoint::Ptr &mpt : vpMP)
+    {
+        if(mpt->isBad())
+            continue;
+
+        mpt->optimal_pose_ = mpt->pose();
+        const std::map<KeyFrame::Ptr, Feature::Ptr> obs = mpt->getObservations();
+
+        for (const auto &item : obs)
+        {
+            const KeyFrame::Ptr &kf = item.first;
+            const Feature::Ptr &ft = item.second;
+
+            ceres::CostFunction* cost_function1 = ceres_slover::PointReprojectionError::Creat( Tbc_ ,ft->fn_[0] / ft->fn_[2], ft->fn_[1] / ft->fn_[2]);//, 1.0/(1<<ft->level_));
+            problem.AddResidualBlock(cost_function1, lossfunctionMpt, kf->optimal_PR_.data(), mpt->optimal_pose_.data());
+            vision_item++;
+        }
+    }
+
+    std::cout<<"Finish add visiual error,sum : "<<vision_item<<std::endl;
+
+
+    int imu_item = 0;
+    //! IMU误差 bias误差
+    Eigen::Matrix<double,6,6> InvCovBgaRW = Eigen::Matrix<double,6,6>::Identity();
+    InvCovBgaRW.topLeftCorner(3,3) = Matrix3d::Identity()/IMUData::getGyrBiasRW2();       // Gyroscope bias random walk, covariance INVERSE
+    InvCovBgaRW.bottomRightCorner(3,3) = Matrix3d::Identity()/IMUData::getAccBiasRW2();   // Accelerometer bias random walk, covariance INVERSE
+    for (int i = 0; i < vpKFs.size()-1; ++i)
+    {
+        KeyFrame::Ptr pKF1 = vpKFs[i];
+        if(pKF1->isBad())
+        {
+            std::cout<<"pKF is bad in gBA, id "<<pKF1->id_<<std::endl;   //Debug log
+            continue;
+        }
+
+        KeyFrame::Ptr pKF0 = pKF1->GetPrevKeyFrame();
+
+//        std::cout<<"pkf0----pkf1: "<<pKF0->id_<<"---"<<pKF1->id_<<std::endl;
+        if(!pKF0)
+        {
+            LOG_ASSERT(pKF1->id_ == 0)<<"Previous KeyFrame is NULL?"<<std::endl;  //Test log
+        }
+        std::cout<<"pkf0----pkf1: "<<pKF0->id_<<"---"<<pKF1->id_<<std::endl;
+        Matrix9d CovPRV = pKF1->GetIMUPreInt().getCovPVPhi();
+
+        ceres::CostFunction* costFunction = ceres_slover::NavStatePRVError::Create(CovPRV,pKF1->GetIMUPreInt(),GravityVec);
+        problem.AddResidualBlock(costFunction,lossfunctionPRV,pKF0->optimal_PR_.data(),pKF0->optimal_v_.data(),pKF0->optimal_detla_bias_.data(),
+                                 pKF1->optimal_PR_.data(),pKF1->optimal_v_.data());
+
+        std::cout<<"add imu error success"<<std::endl;
+
+        Vector3d bg_0 = pKF0->GetNavState().Get_BiasGyr();
+        Vector3d ba_0 = pKF0->GetNavState().Get_BiasAcc();
+        Vector3d bg_1 = pKF1->GetNavState().Get_BiasGyr();
+        Vector3d ba_1 = pKF1->GetNavState().Get_BiasAcc();
+
+        ceres::CostFunction* costFunction1 = ceres_slover::NavStateBiasError::Creat(InvCovBgaRW/pKF1->GetIMUPreInt().getDeltaTime(),
+                                                                                    bg_0,ba_0,bg_1,ba_1);
+        problem.AddResidualBlock(costFunction1,lossfunctionBias,pKF0->optimal_detla_bias_.data(),pKF1->optimal_detla_bias_.data());
+//        std::cout<<"add bias error success"<<std::endl<<std::endl;
+
+        imu_item++;
+    }
+    std::cout<<"Finish add imu error. sum: "<<imu_item<<std::endl;
+
+//    std::abort();
+
+    ceres::Solver::Options options;
+    ceres::Solver::Summary summary;
+    options.linear_solver_type = ceres::DENSE_SCHUR;
+    options.trust_region_strategy_type = ceres::DOGLEG;
+    options.minimizer_progress_to_stdout = report & verbose;
+    options.max_num_iterations = nIterations;
+//    options_.gradient_tolerance = 1e-4;
+//    options_.function_tolerance = 1e-4;
+    //options_.max_solver_time_in_seconds = 0.2;
+
+    std::cout<<"========= Begin solve GlobalBundleAdjustmentNavStatePRV ==========="<<std::endl;
+    ceres::Solve(options, &problem, &summary);
+
+    std::cout<<"GlobalBundleAdjustmentNavStatePRV FullReport()"<<std::endl;
+    std::cout<<summary.FullReport()<<std::endl;
+
+    //todo 根据误差去除误匹配点
+    for(auto kf:vpKFs)
+    {
+        kf->GBA_KF_ = nLoopKF;kf->beforeGBA_Tcw_ = kf->Tcw();
+    }
+    for(auto mpt:vpMP)
+    {
+        mpt->GBA_KF_ = nLoopKF;
+    }
+
+//    cv::waitKey(0);
+//    std::abort();
+    //! 根据优化参数设置状态
+
+
+    for(KeyFrame::Ptr &kf:vpKFs)
+    {
+        NavState ns_recov;
+
+        Vector3d optimal_Pwb_(kf->optimal_PR_[0],kf->optimal_PR_[1],kf->optimal_PR_[2]);
+        Vector3d optimal_PHIwb_(kf->optimal_PR_[3],kf->optimal_PR_[4],kf->optimal_PR_[5]);
+        Sophus::SO3d optimal_Rwb_ = Sophus::SO3d::exp(optimal_PHIwb_);
+
+        ns_recov.Set_Pos(optimal_Pwb_);
+        ns_recov.Set_Rot(optimal_Rwb_);
+        ns_recov.Set_Vel(kf->optimal_v_);
+        ns_recov.Set_DeltaBiasGyr(kf->optimal_detla_bias_.block(0,0,3,1));
+        ns_recov.Set_DeltaBiasAcc(kf->optimal_detla_bias_.block(3,0,3,1));
+
+        SE3d Twb_ = SE3d(optimal_Rwb_,optimal_Pwb_);
+        SE3d Tbc_ = SE3d(Tbc);
+        kf->optimal_Tcw_ = (Twb_ * Tbc_).inverse();
+    }
+
+    //! Report
+//    reportInfo<2>(problem, summary, report, verbose);
+}
+
+void Optimizer::LocalBAPRVIDP(const KeyFrame::Ptr &keyframe,const std::list<KeyFrame::Ptr> &lLocalKeyFrames, std::list<MapPoint::Ptr> &bad_mpts, int size, int min_shared_fts, const Vector3d& gw, bool report, bool verbose)
+{
+    Matrix4d Tcb = ImuConfigParam::GetEigTbc();
+    Matrix3d Rcb = Tcb.topLeftCorner(3,3);
+    Vector3d Pcb = Tcb.topRightCorner(3,1);
+    // Gravity vector in world frame
+    Vector3d GravityVec = gw;
+
+
+}
+
+int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const IMUPreintegrator &imupreint,
+                                const Vector3d &gw, const bool &bComputeMarg)
+{
+
+}
+
+int Optimizer::PoseOptimization(Frame::Ptr pFrame, KeyFrame::Ptr pLastKF, const IMUPreintegrator &imupreint,
+                                const Vector3d &gw, const bool &bComputeMarg)
+{
+//    // set Extrinsics
+//    Matrix4d Tbc = ImuConfigParam::GetEigTbc();
+//    Matrix3d Rbc = Tbc.topLeftCorner(3,3);
+//    Vector3d Pbc = Tbc.topRightCorner(3,1);
+//    // Gravity vector in world frame
+//    Vector3d GravityVec = gw;
+//
+//    ceres::Problem problem;
+
+    /*
+    double pvr_i[9],pvr_j[9];
+
+    //! 应该是delta bias
+    double bias_i[6],bias_j[6];
+
+    ceres::LocalParameterization* localParameterization = new ceres_slover::PVRParameterization();
+
+    problem.AddParameterBlock(pvr_i,9,localParameterization);
+    problem.AddParameterBlock(pvr_j,9,localParameterization);
+    problem.AddParameterBlock(bias_i,6);
+    problem.AddParameterBlock(bias_j,6);
+
+    // todo 设置navstate 的值
+
+    NavState navState_i = pFrame->GetNavState();
+    NavState navState_j = pLastKF->GetNavState();
+
+    Vector3d pi = navState_i.Get_P();
+    Vector3d vi = navState_i.Get_V();
+    Vector3d phii = (navState_i.Get_R()).log();
+
+    pvr_i[0] = pi[0];pvr_i[1] = pi[1];pvr_i[2] = pi[2];
+    pvr_i[3] = vi[0];pvr_i[4] = vi[1];pvr_i[5] = vi[2];
+    pvr_i[6] = phii[0];pvr_i[7] = phii[0];pvr_i[8] = phii[0];
+
+    Vector3d pj = navState_j.Get_P();
+    Vector3d vj = navState_j.Get_V();
+    Vector3d phij = (navState_j.Get_R()).log();
+
+    pvr_j[0] = pj[0];pvr_j[1] = pj[1];pvr_j[2] = pj[2];
+    pvr_j[3] = vj[0];pvr_j[4] = vj[1];pvr_j[5] = vj[2];
+    pvr_j[6] = phij[0];pvr_j[7] = phij[0];pvr_j[8] = phij[0];
+
+    //todo add lossfunction
+    ceres::CostFunction* costFunction = new ceres_slover::NavStatePVRError(imupreint,GravityVec);
+    problem.AddResidualBlock(costFunction,NULL,pvr_i,pFrame->optimal_detla_bias_.data(),pvr_j);
+
+    ceres::CostFunction* costFunction1 = ceres_slover::NavStateBiasError::Creat(pFrame->GetNavState().Get_BiasGyr(),pFrame->GetNavState().Get_BiasAcc(),
+                                                                                pLastKF->GetNavState().Get_BiasGyr(),pLastKF->GetNavState().Get_BiasAcc());
+    problem.AddResidualBlock(costFunction1,NULL,pFrame->optimal_detla_bias_.data(),pLastKF->optimal_detla_bias_.data());
+    */
+
+
+
+
+
+
+
+}
+
+
+
+
+
+}
+
+
+
+

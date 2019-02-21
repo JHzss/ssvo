@@ -21,8 +21,9 @@ if(SSVO_DBOW_ENABLE)
 endif()
 
 ## -----------------------
-## Build setting
+## Build setting Debug/Release
 ## -----------------------
+set(CMAKE_BUILD_TYPE Release)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -77,6 +78,7 @@ find_package(fast REQUIRED)
 include_directories(${fast_INCLUDE_DIR})
 
 # OpenCV
+set(OpenCV_DIR /home/jh/opencv-3.2.0/build)
 find_package(OpenCV 3.1.0 REQUIRED)
 if(OpenCV_FOUND)
     message("-- Found OpenCV ${OpenCV_VERSION} in ${OpenCV_INCLUDE_DIRS}")
@@ -114,6 +116,9 @@ endif()
 include_directories(
     ${PROJECT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/include
+	${PROJECT_SOURCE_DIR}/src/IMU##/imudata.hpp
+#	${PROJECT_SOURCE_DIR}/src/IMU/NavState.hpp
+#	${PROJECT_SOURCE_DIR}/src/IMU/IMUPreintegrator.hpp
 )
 
 list(APPEND LINK_LIBS
@@ -152,6 +157,10 @@ list(APPEND SOURCEFILES
     src/brief.cpp
     src/sim3_solver.cpp
 	src/loop_closure.cpp
+		src/IMU/config.cpp
+		src/IMU/imudata.cpp
+		src/IMU/NavState.cpp
+		src/IMU/IMUPreintegrator.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${SOURCEFILES})

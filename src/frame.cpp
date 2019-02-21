@@ -5,6 +5,7 @@
 #include "frame.hpp"
 #include "keyframe.hpp"
 #include "utils.hpp"
+#include "config.hpp"
 
 namespace ssvo {
 
@@ -29,6 +30,26 @@ Frame::Frame(const cv::Mat &img, const double timestamp, const AbstractCamera::P
     for(size_t i = 0; i < optical_pyr_.size(); i++)
         optical_pyr_[i].copyTo(img_pyr_[i]);
 
+}
+
+Frame::Frame(const cv::Mat &img, const double timestamp, const AbstractCamera::Ptr &cam, const std::vector<ssvo::IMUData> &vimu) :
+        id_(next_id_++), timestamp_(timestamp), cam_(cam), max_level_(Config::imageNLevel()-1)
+{
+    //保存两帧之间的imu数据
+    mvIMUDataSinceLastFrame = vimu;
+
+    Tcw_ = SE3d(Matrix3d::Identity(), Vector3d::Zero());
+    Twc_ = Tcw_.inverse();
+
+//    utils::createPyramid(img, img_pyr_, nlevels_);
+    //! create pyramid for optical flow
+    cv::buildOpticalFlowPyramid(img, optical_pyr_, optical_win_size_, max_level_, false);
+    LOG_ASSERT(max_level_ == (int) optical_pyr_.size()-1) << "The pyramid level is unsuitable! maxlevel should be " << optical_pyr_.size()-1;
+
+    //! copy to image pyramid
+    img_pyr_.resize(optical_pyr_.size());
+    for(size_t i = 0; i < optical_pyr_.size(); i++)
+        optical_pyr_[i].copyTo(img_pyr_[i]);
 }
 
 Frame::Frame(const ImgPyr &img_pyr, const uint64_t id, const double timestamp, const AbstractCamera::Ptr &cam) :
@@ -82,6 +103,10 @@ void Frame::setPose(const SE3d& pose)
     Twc_ = pose;
     Tcw_ = Twc_.inverse();
     Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
+
+    SE3d Tcb(ImuConfigParam::GetEigTbc());
+    Twb_ = Twc_ * Tcb;
+    Tbw_ = Twb_.inverse();
 }
 
 void Frame::setPose(const Matrix3d& R, const Vector3d& t)
@@ -90,12 +115,33 @@ void Frame::setPose(const Matrix3d& R, const Vector3d& t)
     Twc_ = SE3d(R, t);
     Tcw_ = Twc_.inverse();
     Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
+
+    SE3d Tcb(ImuConfigParam::GetEigTbc());
+    Twb_ = Twc_ * Tcb;
+    Tbw_ = Twb_.inverse();
 }
 
 void Frame::setTcw(const SE3d &Tcw)
 {
     std::lock_guard<std::mutex> lock(mutex_pose_);
     Tcw_ = Tcw;
+    Twc_ = Tcw_.inverse();
+    Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
+
+    SE3d Tcb(ImuConfigParam::GetEigTbc());
+    Twb_ = Twc_ * Tcb;
+    Tbw_ = Twb_.inverse();
+
+}
+
+void Frame::setTwb(const SE3d &Twb)
+{
+    std::lock_guard<std::mutex> lock(mutex_pose_);
+
+    Twb_ = Twb;
+    Tbw_ = Twb_.inverse();
+    SE3d Tcb(ImuConfigParam::GetEigTbc());
+    Tcw_ = Tcb * Tbw_;
     Twc_ = Tcw_.inverse();
     Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
 
@@ -300,6 +346,110 @@ std::map<KeyFrame::Ptr, int> Frame::getOverLapKeyFrames()
     }
 
     return overlap_kfs;
+}
+
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+
+void Frame::ComputeIMUPreIntSinceLastFrame(const Frame::Ptr pLastF, IMUPreintegrator& IMUPreInt) const
+{
+    // Reset pre-integrator first
+    IMUPreInt.reset();
+
+    const std::vector<IMUData>& vIMUSInceLastFrame = mvIMUDataSinceLastFrame;
+
+    Vector3d bg = pLastF->GetNavState().Get_BiasGyr();
+    Vector3d ba = pLastF->GetNavState().Get_BiasAcc();
+
+    // remember to consider the gap between the last KF and the first IMU
+    {
+        const IMUData& imu = vIMUSInceLastFrame.front();
+        double dt = imu._t - pLastF->timestamp_;
+        IMUPreInt.update(imu._g - bg, imu._a - ba, dt);
+
+        // Test log
+        if(dt < 0)
+        {
+            std::cerr<<std::fixed<<std::setprecision(3)<<"dt = "<<dt<<", this frame vs last imu time: "<<pLastF->timestamp_<<" vs "<<imu._t<<std::endl;
+            std::cerr.unsetf ( std::ios::showbase );                // deactivate showbase
+        }
+    }
+    // integrate each imu
+    for(size_t i=0; i<vIMUSInceLastFrame.size(); i++)
+    {
+        const IMUData& imu = vIMUSInceLastFrame[i];
+        double nextt;
+        if(i==vIMUSInceLastFrame.size()-1)
+            nextt = timestamp_;         // last IMU, next is this KeyFrame
+        else
+            nextt = vIMUSInceLastFrame[i+1]._t;  // regular condition, next is imu data
+
+        // delta time
+        double dt = nextt - imu._t;
+
+        LOG_ASSERT(dt>-1e-5)<<"dt is '-', please check";
+
+        // update pre-integrator
+        IMUPreInt.update(imu._g - bg, imu._a - ba, dt);
+
+        // Test log
+
+//        if(dt <= -1e-6)
+//        {
+//            LOG_ASSERT()
+//            std::cerr<<std::fixed<<std::setprecision(3)<<"dt = "<<dt<<", this vs next time: "<<imu._t<<" vs "<<nextt<<std::endl;
+//            std::cerr.unsetf ( std::ios::showbase );                // deactivate showbase
+//        }
+    }
+}
+
+void Frame::UpdatePoseFromNS(const Matrix4d &Tbc)
+{
+    Matrix3d Rbc = Tbc.block(0,0,3,3);
+    Vector3d Pbc = Tbc.block(0,3,3,1);
+
+    Matrix3d Rwb = mNavState.Get_RotMatrix();
+    Vector3d Pwb = mNavState.Get_P();
+
+    SE3d Twb(Rwb,Pwb);
+    setTwb(Twb);
+}
+
+void Frame::UpdateNavState(const IMUPreintegrator& imupreint, const Vector3d& gw)
+{
+//    Converter::updateNS(mNavState,imupreint,gw);
+}
+
+const NavState& Frame::GetNavState(void) const
+{
+    return mNavState;
+}
+
+void Frame::SetInitialNavStateAndBias(const NavState& ns)
+{
+    mNavState = ns;
+    // Set bias as bias+delta_bias, and reset the delta_bias term
+    mNavState.Set_BiasGyr(ns.Get_BiasGyr()+ns.Get_dBias_Gyr());
+    mNavState.Set_BiasAcc(ns.Get_BiasAcc()+ns.Get_dBias_Acc());
+    mNavState.Set_DeltaBiasGyr(Vector3d::Zero());
+    mNavState.Set_DeltaBiasAcc(Vector3d::Zero());
+}
+
+
+void Frame::SetNavStateBiasGyr(const Vector3d &bg)
+{
+    mNavState.Set_BiasGyr(bg);
+}
+
+void Frame::SetNavStateBiasAcc(const Vector3d &ba)
+{
+    mNavState.Set_BiasAcc(ba);
+}
+
+void Frame::SetNavState(const NavState& ns)
+{
+    mNavState = ns;
 }
 
 }

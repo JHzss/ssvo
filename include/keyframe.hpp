@@ -5,6 +5,8 @@
 #include "frame.hpp"
 #include "DBoW3/DBoW3.h"
 
+#include <mutex>
+
 namespace ssvo
 {
 
@@ -36,6 +38,9 @@ public:
     inline static KeyFrame::Ptr create(const Frame::Ptr frame)
     { return Ptr(new KeyFrame(frame)); }
 
+    inline static KeyFrame::Ptr create(const Frame::Ptr frame, std::vector<IMUData> vIMUData, KeyFrame::Ptr pPrevKF)
+    { return Ptr(new KeyFrame(frame, vIMUData, pPrevKF)); }
+
     void setNotErase();
 
     void setErase();
@@ -51,6 +56,8 @@ public:
 private:
 
     KeyFrame(const Frame::Ptr frame);
+
+    KeyFrame(const Frame::Ptr frame, std::vector<IMUData> vIMUData, KeyFrame::Ptr pPrevKF);
 
     void addConnection(const KeyFrame::Ptr &kf, const int weight);
 
@@ -89,6 +96,7 @@ public:
     //解决mpt和feature无序的问题
     std::vector<Feature::Ptr> featuresInBow;
     std::vector<MapPoint::Ptr> mapPointsInBow;
+
 private:
 
     std::map<KeyFrame::Ptr, int> connectedKeyFrames_;
@@ -110,6 +118,61 @@ private:
 
     //todo 删除（bad）的时候记着改
     KeyFrame::Ptr parent_;
+
+//! imu-------------------------------------------------
+//! imu-------------------------------------------------
+//! imu-------------------------------------------------
+protected:
+
+    std::mutex mMutexPrevKF;
+    std::mutex mMutexNextKF;
+    KeyFrame::Ptr mpPrevKeyFrame;
+    KeyFrame::Ptr mpNextKeyFrame;
+
+    // P, V, R, bg, ba, delta_bg, delta_ba (delta_bx is for optimization update)
+    //todo 注意位姿更新的时候这个也要更新
+    std::mutex mMutexNavState;
+    NavState mNavState;
+
+    // IMU Data from lask KeyFrame to this KeyFrame
+    std::mutex mMutexIMUData;
+    std::vector<IMUData> mvIMUData;
+    IMUPreintegrator mIMUPreInt;
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    KeyFrame::Ptr GetPrevKeyFrame(void);
+    KeyFrame::Ptr GetNextKeyFrame(void);
+    void SetPrevKeyFrame(KeyFrame::Ptr pKF);
+    void SetNextKeyFrame(KeyFrame::Ptr pKF);
+    std::vector<IMUData> GetVectorIMUData(void);
+    void AppendIMUDataToFront(KeyFrame::Ptr pPrevKF);
+    void ComputePreInt(void);
+
+    const IMUPreintegrator & GetIMUPreInt(void);
+
+    void UpdateNavStatePVRFromTcw(const SE3d &Tcw,const SE3d &Tbc);
+    void UpdatePoseFromNS(const Eigen::Matrix4d &Tbc);
+    void UpdateNavState(const IMUPreintegrator& imupreint, const Vector3d& gw);
+    void SetNavState(const NavState& ns);
+    const NavState& GetNavState(void);
+    void SetNavStateVel(const Vector3d &vel);
+    void SetNavStatePos(const Vector3d &pos);
+    void SetNavStateRot(const Matrix3d &rot);
+    void SetNavStateRot(const Sophus::SO3d &rot);
+    void SetNavStateBiasGyr(const Vector3d &bg);
+    void SetNavStateBiasAcc(const Vector3d &ba);
+    void SetNavStateDeltaBg(const Vector3d &dbg);
+    void SetNavStateDeltaBa(const Vector3d &dba);
+
+    void SetInitialNavStateAndBias(const NavState& ns);
+
+    void setOptimizationState();
+
+    // Variables used by loop closing
+    NavState mNavStateGBA;       //mTcwGBA
+    NavState mNavStateBefGBA;    //mTcwBefGBA
+
 
 };
 

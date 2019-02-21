@@ -6,6 +6,8 @@
 
 #include <opencv2/core.hpp>
 #include <glog/logging.h>
+#include <Eigen/Dense>
+#include <opencv2/opencv.hpp>
 
 namespace ssvo{
 
@@ -208,6 +210,53 @@ private:
     
     //! DBoW
     std::string dbow_dir_;
+
+};
+
+class ImuConfigParam
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    ImuConfigParam(std::string configfile);
+
+    // For good initialization (no movement at the beginning for some bag)
+    double _testDiscardTime;
+
+    static Eigen::Matrix4d GetEigTbc();
+
+    static Eigen::Matrix4d GetEigTcb();
+
+    static int GetLocalWindowSize();
+
+    static double GetImageDelayToIMU();
+
+    static bool GetAccMultiply9p8();
+
+    static double GetG(){return _g;}
+
+    std::string _bagfile;
+//    std::string _imageTopic;
+//    std::string _imuTopic;
+
+    static std::string getTmpFilePath();
+    static std::string _tmpFilePath;
+
+    static double GetVINSInitTime(){return _nVINSInitTime;}
+    static bool GetRealTimeFlag() {return _bRealTime;}
+
+private:
+    static Eigen::Matrix4d _EigTbc;
+
+    static Eigen::Matrix4d _EigTcb;
+
+    static int _LocalWindowSize;
+    static double _ImageDelayToIMU;
+    static bool _bAccMultiply9p8;
+
+    static double _g;
+    static double _nVINSInitTime;
+    static bool _bRealTime;
 };
 
 }

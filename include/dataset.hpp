@@ -339,8 +339,10 @@ private:
 
     std::vector<Image> left_;
     std::vector<Image> right_;
-    std::vector<IMUData> imu_;
     std::vector<GroundTruthData> groundtruth_;
+
+public:
+    std::vector<IMUData> imu_;
 };
 
 }

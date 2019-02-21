@@ -58,7 +58,7 @@ System::System(std::string config_file, std::string calib_flie) :
     DBoW3::Vocabulary* vocabulary = new DBoW3::Vocabulary(voc_dir);
     DBoW3::Database* database= new DBoW3::Database(*vocabulary, true, 4);
 
-    mapper_ = LocalMapper::create(vocabulary, database, fast_detector_, true, false);
+    mapper_ = LocalMapper::create(vocabulary, database, fast_detector_,mpParams , true, false);
 
     loop_closure_ = LoopClosure::creat(vocabulary, database);
     loop_closure_->startMainThread();
@@ -160,7 +160,7 @@ System::Status System::initialize()
 
     std::vector<Vector3d> points;
     initializer_->createInitalMap(Config::mapScale());
-    mapper_->createInitalMap(initializer_->getReferenceFrame(), current_frame_);
+    mapper_->createInitalMap(initializer_->getReferenceFrame(), current_frame_, mvIMUSinceLastKF);
 
     LOG(WARNING) << "[System] Start two-view BA";
 
@@ -189,12 +189,60 @@ System::Status System::tracking()
 {
     std::unique_lock<std::mutex> lock(mapper_->map_->mutex_update_);
     //! loop closure need
-    if(loop_closure_->update_finish_ == true)
+    if(loop_closure_->update_finish_ == true || mapper_->update_finish_ == true)
     {
-        KeyFrame::Ptr ref = last_frame_->getRefKeyFrame();
+
+        std::cout<<"VO Fix last_frame_ pose!"<<std::endl;
+        KeyFrame::Ptr ref = /*last_frame_->getRefKeyFrame()*/last_keyframe_;
         SE3d Tlr = last_frame_->Tcw()* ref->beforeUpdate_Tcw_.inverse();
+        std::cout<<"ref gba id: "<<ref->GBA_KF_<<std::endl;
+
+        std::cout<<"reference_keyframe_ id: "<<reference_keyframe_->id_<<std::endl;
+        std::cout<<"reference_keyframe_ frameid: "<<reference_keyframe_->frame_id_<<std::endl;
+        std::cout<<"current_frame_ frameid: "<<current_frame_->id_<<std::endl;
+        std::cout<<ref->id_ <<" SE3d: "<<std::endl;
+        std::cout<<Tlr.rotationMatrix()<<std::endl<<std::endl;
+        std::cout<<Tlr.translation()<<std::endl;
         last_frame_->setTcw( Tlr * ref->Tcw() );
         loop_closure_->update_finish_ = false;
+        mapper_->update_finish_ = false;
+
+
+        std::vector<KeyFrame::Ptr > kfs_to = mapper_->map_->getAllKeyFrames();
+        bool traj_afterGBA = true;
+        if(traj_afterGBA)
+        {
+            std::sort(kfs_to.begin(),kfs_to.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->timestamp_<kf2->timestamp_;});
+            std::string beforeUpdate_Tcw_ = "/home/jh/temp/ssvo/traj_beforeUpdate_Tcw_.txt";
+            std::ofstream f_beforeUpdate_Tcw_;
+            f_beforeUpdate_Tcw_.open(beforeUpdate_Tcw_.c_str());
+            f_beforeUpdate_Tcw_ << std::fixed;
+            for(KeyFrame::Ptr kf:kfs_to)
+            {
+                Sophus::SE3d frame_pose = kf->pose();//(*reference_keyframe_ptr)->Twc() * (*frame_pose_ptr);
+                Vector3d t = frame_pose.translation();
+                Quaterniond q = frame_pose.unit_quaternion();
+
+                f_beforeUpdate_Tcw_ << std::setprecision(6) << kf->timestamp_ << " "
+                                    << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+
+            }
+
+            Sophus::SE3d frame_pose = last_frame_->pose();//(*reference_keyframe_ptr)->Twc() * (*frame_pose_ptr);
+            Vector3d t = frame_pose.translation();
+            Quaterniond q = frame_pose.unit_quaternion();
+
+            f_beforeUpdate_Tcw_ << std::setprecision(6) << last_frame_->timestamp_ << " "
+                                << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+
+            f_beforeUpdate_Tcw_.close();
+            std::cout<<"traj_afterGBA saved!"<<std::endl;
+
+        }
+
+
+
+//        cv::waitKey(0);
     }
 
     current_frame_->setRefKeyFrame(reference_keyframe_);
@@ -252,6 +300,9 @@ System::Status System::tracking()
 
 System::Status System::relocalize()
 {
+    std::cout<<"Lost!!!"<<std::endl;
+    std::abort();
+
     Corners corners_new;
     Corners corners_old;
     fast_detector_->detect(current_frame_->images(), corners_new, corners_old, Config::minCornersPerKeyFrame());
@@ -380,7 +431,14 @@ bool System::createNewKeyFrame()
     Vector3d tran = T_cur_from_ref.translation();
     double dist1 = tran.dot(tran);
     double dist2 = 0.01 * (T_cur_from_ref.rotationMatrix() - Matrix3d::Identity()).norm();
-    if(dist1+dist2  < 0.005 * median_depth)
+
+    double depth_th = 0.005;
+    if(!mapper_->GetVINSInited())
+    {
+        depth_th /= 2;
+    }
+
+    if(dist1+dist2  < depth_th * median_depth)
         c1 = false;
 
     //! check disparity
@@ -426,7 +484,16 @@ bool System::createNewKeyFrame()
     if(c1 && (c2 || c3))
     {
         //! create new keyframe
-        KeyFrame::Ptr new_keyframe = KeyFrame::create(current_frame_);
+        KeyFrame::Ptr new_keyframe = KeyFrame::create(current_frame_,mvIMUSinceLastKF,last_keyframe_);
+
+        //! Set initial NavState for KeyFrame TODO 但是这里的普通帧的NavState是什么时候设置的？
+        new_keyframe->SetInitialNavStateAndBias(current_frame_->GetNavState());
+        //! 通过刚刚设置gyr 和 acc的状态 Compute pre-integrator
+        new_keyframe->ComputePreInt();
+        //! Clear IMUData buffer
+        mvIMUSinceLastKF.clear();
+
+
         for(const Feature::Ptr &ft : fts)
         {
             if(ft->mpt_->isBad())
@@ -474,6 +541,7 @@ void System::finishFrame()
         else if(STATUS_INITAL_RESET == status_)
             initializer_->reset();
 
+        mvIMUSinceLastKF.clear();
         initializer_->drowOpticalFlow(image_show);
     }
     else if(STAGE_RELOCALIZING == stage_)
@@ -502,6 +570,8 @@ void System::finishFrame()
 
 void System::saveTrajectoryTUM(const std::string &file_name)
 {
+    std::cout<<"Begin save trajectory.";
+    LOG(INFO) << "Begin save trajectory.";
     std::ofstream f;
     f.open(file_name.c_str());
     f << std::fixed;
@@ -542,7 +612,284 @@ void System::saveTrajectoryTUM(const std::string &file_name)
     f.close();
     LOG(INFO) << " KFtrajectory saved!";
 
+}
 
+
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+
+void System::process(const cv::Mat &image, const double timestamp, const std::vector<ssvo::IMUData> &vimu)
+{
+    //将两个关键帧之间的imu数据保存下来
+    mvIMUSinceLastKF.insert(mvIMUSinceLastKF.end(), vimu.begin(),vimu.end());
+
+    sysTrace->startTimer("total");
+    sysTrace->startTimer("frame_create");
+    //! get gray image
+    double t0 = (double)cv::getTickCount();
+    rgb_ = image;
+    cv::Mat gray = image.clone();
+    if(gray.channels() == 3)
+        cv::cvtColor(gray, gray, cv::COLOR_RGB2GRAY);
+
+    //构造帧，保存imu数据
+    current_frame_ = Frame::create(gray, timestamp, camera_,vimu);
+    double t1 = (double)cv::getTickCount();
+    LOG(WARNING) << "[System] Frame " << current_frame_->id_ << " create time: " << (t1-t0)/cv::getTickFrequency();
+    sysTrace->log("frame_id", current_frame_->id_);
+    sysTrace->stopTimer("frame_create");
+
+    sysTrace->startTimer("processing");
+    if(STAGE_NORMAL_FRAME == stage_)
+    {
+        if(mapper_->GetVINSInited())
+            status_ = trackingVIO();
+        else
+            status_ = tracking();
+
+    }
+    else if(STAGE_INITALIZE == stage_)
+    {
+        status_ = initialize();
+    }
+    else if(STAGE_RELOCALIZING == stage_)
+    {
+        //todo 这部分还完全没处理
+        status_ = relocalize();
+    }
+    sysTrace->stopTimer("processing");
+
+    finishFrame();
+
+}
+
+System::Status System::trackingVIO()
+{
+    std::unique_lock<std::mutex> lock(mapper_->map_->mutex_update_);
+
+    //! loop closure need
+    //todo 同时考虑局部BA优化的情况
+    if(loop_closure_->update_finish_ == true || mapper_->update_finish_ == true)
+    {
+        std::cout<<"VIO Fix last_frame_ pose!"<<std::endl;
+        KeyFrame::Ptr ref = /*last_frame_->getRefKeyFrame()*/last_keyframe_;
+        SE3d Tlr = last_frame_->Tcw()* ref->beforeUpdate_Tcw_.inverse();
+        std::cout<<"ref gba id: "<<ref->GBA_KF_<<std::endl;
+
+        std::cout<<"reference_keyframe_ id: "<<reference_keyframe_->id_<<std::endl;
+        std::cout<<"reference_keyframe_ frameid: "<<reference_keyframe_->frame_id_<<std::endl;
+        std::cout<<"current_frame_ frameid: "<<current_frame_->id_<<std::endl;
+        std::cout<<ref->id_ <<" SE3d: "<<std::endl;
+        std::cout<<Tlr.rotationMatrix()<<std::endl<<std::endl;
+        std::cout<<Tlr.translation()<<std::endl;
+        last_frame_->setTcw( Tlr * ref->Tcw() );
+        loop_closure_->update_finish_ = false;
+        mapper_->update_finish_ = false;
+
+
+        std::vector<KeyFrame::Ptr > kfs_to = mapper_->map_->getAllKeyFrames();
+        bool traj_afterGBA = true;
+        if(traj_afterGBA)
+        {
+            std::sort(kfs_to.begin(),kfs_to.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->timestamp_<kf2->timestamp_;});
+            std::string beforeUpdate_Tcw_ = "/home/jh/temp/ssvo/traj_beforeUpdate_Tcw_.txt";
+            std::ofstream f_beforeUpdate_Tcw_;
+            f_beforeUpdate_Tcw_.open(beforeUpdate_Tcw_.c_str());
+            f_beforeUpdate_Tcw_ << std::fixed;
+            for(KeyFrame::Ptr kf:kfs_to)
+            {
+                Sophus::SE3d frame_pose = kf->beforeUpdate_Tcw_.inverse();//(*reference_keyframe_ptr)->Twc() * (*frame_pose_ptr);
+                Vector3d t = frame_pose.translation();
+                Quaterniond q = frame_pose.unit_quaternion();
+
+                f_beforeUpdate_Tcw_ << std::setprecision(6) << kf->timestamp_ << " "
+                               << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+
+            }
+
+            Sophus::SE3d frame_pose = last_frame_->Tcw().inverse();//(*reference_keyframe_ptr)->Twc() * (*frame_pose_ptr);
+            Vector3d t = frame_pose.translation();
+            Quaterniond q = frame_pose.unit_quaternion();
+
+            f_beforeUpdate_Tcw_ << std::setprecision(6) << last_frame_->timestamp_ << " "
+                                << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+
+            f_beforeUpdate_Tcw_.close();
+            std::cout<<"traj_afterGBA saved!"<<std::endl;
+
+        }
+
+
+    }
+
+    current_frame_->setRefKeyFrame(reference_keyframe_);
+
+    //! track seeds
+    depth_filter_->trackFrame(last_frame_, current_frame_);
+
+    //todo 设置这个变量
+    bool bMapUpdated = false;
+
+    //todo IMU预积分，估计当前帧的位姿
+//    PredictNavStateByIMU(bMapUpdated);
+    current_frame_->setPose(last_frame_->pose());
+
+    //! alignment by SE3 ，得到准确的位姿
+    AlignSE3 align;
+    sysTrace->startTimer("img_align");
+    align.run(last_frame_, current_frame_, Config::alignTopLevel(), Config::alignBottomLevel(), 30, 1e-8);
+    sysTrace->stopTimer("img_align");
+
+    //! track local map
+    sysTrace->startTimer("feature_reproj");
+    int matches = feature_tracker_->reprojectLoaclMap(current_frame_);
+    sysTrace->stopTimer("feature_reproj");
+    sysTrace->log("num_feature_reproj", matches);
+    LOG(WARNING) << "[System] Track with " << matches << " points";
+
+    // TODO tracking status
+    if(matches < Config::minQualityFts())
+        return STATUS_TRACKING_BAD;
+
+    //! motion-only BA
+    sysTrace->startTimer("motion_ba");
+
+    //todo 添加跟踪上一个关键帧的功能，如果局部地图发生了变化，就跟踪上一个关键帧
+    IMUPreintegrator imupreint = GetIMUPreIntSinceLastFrame(current_frame_, last_frame_);
+
+    //todo 改变优化方法
+//    Optimizer::PoseOptimization(current_frame_,last_frame_,imupreint,mapper_->GetGravityVec(),true);
+    Optimizer::motionOnlyBundleAdjustment(current_frame_, false, false, true);
+    sysTrace->stopTimer("motion_ba");
+
+    sysTrace->startTimer("per_depth_filter");
+    if(createNewKeyFrame())
+    {
+        depth_filter_->insertFrame(current_frame_, reference_keyframe_);
+        mapper_->insertKeyFrame(reference_keyframe_);
+    }
+    else
+    {
+        depth_filter_->insertFrame(current_frame_, nullptr);
+    }
+    sysTrace->stopTimer("per_depth_filter");
+
+    sysTrace->startTimer("light_affine");
+    calcLightAffine();
+    sysTrace->stopTimer("light_affine");
+
+    //！ save frame pose
+    frame_timestamp_buffer_.push_back(current_frame_->timestamp_);
+    reference_keyframe_buffer_.push_back(current_frame_->getRefKeyFrame());
+    frame_pose_buffer_.push_back(current_frame_->pose());//current_frame_->getRefKeyFrame()->Tcw() * current_frame_->pose());
+
+    return STATUS_TRACKING_GOOD;
+}
+    
+    
+    
+void System::PredictNavStateByIMU(bool bMapUpdated) 
+{
+//    if(!mapper_->GetVINSInited()) std::cerr<<"mapper_->GetVINSInited() not, shouldn't in PredictNavStateByIMU"<<std::endl;
+//
+//    // Map updated, optimize with last KeyFrame
+//    if(mapper_->GetFirstVINSInited() || bMapUpdated)
+//    {
+//        //if(mapper_->GetFirstVINSInited() && !bMapUpdated) cerr<<"2-FirstVinsInit, but not bMapUpdated. shouldn't"<<endl;
+//
+//        // Compute IMU Pre-integration
+//        mIMUPreIntInTrack = GetIMUPreIntSinceLastKF(&current_frame_, last_keyframe_, mvIMUSinceLastKF);
+//
+//        // Get initial NavState&pose from Last KeyFrame
+//        current_frame_->SetInitialNavStateAndBias(last_keyframe_->GetNavState());
+//        current_frame_->UpdateNavState(mIMUPreIntInTrack,mapper_->GetGravityVec());
+//        current_frame_->UpdatePoseFromNS(ImuConfigParam::GetEigTbc());
+//
+//        // Test log
+//        // Updated KF by Local Mapping. Should be the same as mpLastKeyFrame
+//        if(current_frame_->GetNavState().Get_dBias_Acc().norm() > 1e-6) std::cerr<<"PredictNavStateByIMU1 current Frame dBias acc not zero"<<std::endl;
+//        if(current_frame_->GetNavState().Get_dBias_Gyr().norm() > 1e-6) std::cerr<<"PredictNavStateByIMU1 current Frame dBias gyr not zero"<<std::endl;
+//    }
+//        // Map not updated, optimize with last Frame
+//    else
+//    {
+//        // Compute IMU Pre-integration
+//        mIMUPreIntInTrack = GetIMUPreIntSinceLastFrame(&current_frame_, &last_frame_);
+//
+//        // Get initial pose from Last Frame
+//        current_frame_->SetInitialNavStateAndBias(last_frame_->GetNavState());
+//        current_frame_->UpdateNavState(mIMUPreIntInTrack,mapper_->GetGravityVec());
+//        current_frame_->UpdatePoseFromNS(ImuConfigParam::GetEigTbc());
+//
+//        // Test log
+//        if(current_frame_->GetNavState().Get_dBias_Acc().norm() > 1e-6) std::cerr<<"PredictNavStateByIMU2 current Frame dBias acc not zero"<<std::endl;
+//        if(current_frame_->GetNavState().Get_dBias_Gyr().norm() > 1e-6) std::cerr<<"PredictNavStateByIMU2 current Frame dBias gyr not zero"<<std::endl;
+//    }
+}
+
+IMUPreintegrator System::GetIMUPreIntSinceLastKF(Frame::Ptr pCurF, KeyFrame::Ptr pLastKF, const std::vector<IMUData>& vIMUSInceLastKF)
+{
+    // Reset pre-integrator first
+    IMUPreintegrator IMUPreInt;
+    IMUPreInt.reset();
+
+    Vector3d bg = pLastKF->GetNavState().Get_BiasGyr();
+    Vector3d ba = pLastKF->GetNavState().Get_BiasAcc();
+
+    // remember to consider the gap between the last KF and the first IMU
+    {
+        const IMUData& imu = vIMUSInceLastKF.front();
+        double dt = imu._t - pLastKF->timestamp_;
+        LOG_ASSERT(dt>-1e-5)<<"dt is '-', please check";
+
+        IMUPreInt.update(imu._g - bg, imu._a - ba, dt);
+
+        // Test log
+//        if(dt < 0)
+//        {
+//            std::cerr<<std::fixed<<std::setprecision(3)<<"dt = "<<dt<<", this KF vs last imu time: "<<pLastKF->timestamp_<<" vs "<<imu._t<<std::endl;
+//            std::cerr.unsetf ( std::ios::showbase );                // deactivate showbase
+//        }
+    }
+    // integrate each imu
+    for(size_t i=0; i<vIMUSInceLastKF.size(); i++)
+    {
+        const IMUData& imu = vIMUSInceLastKF[i];
+        double nextt;
+        if(i==vIMUSInceLastKF.size()-1)
+            nextt = pCurF->timestamp_;         // last IMU, next is this KeyFrame
+        else
+            nextt = vIMUSInceLastKF[i+1]._t;  // regular condition, next is imu data
+
+        // delta time
+        double dt = nextt - imu._t;
+        LOG_ASSERT(dt>-1e-5)<<"dt is '-', please check";
+
+        // update pre-integrator
+        IMUPreInt.update(imu._g - bg, imu._a - ba, dt);
+
+
+        // Test log
+//        if(dt <= 1e-8)
+//        {
+//            std::cerr<<std::fixed<<std::setprecision(3)<<"dt = "<<dt<<", this vs next time: "<<imu._t<<" vs "<<nextt<<std::endl;
+//            std::cerr.unsetf ( std::ios::showbase );                // deactivate showbase
+//        }
+    }
+
+    return IMUPreInt;
+}
+
+IMUPreintegrator System::GetIMUPreIntSinceLastFrame(Frame::Ptr pCurF, Frame::Ptr pLastF)
+{
+    // Reset pre-integrator first
+    IMUPreintegrator IMUPreInt;
+    IMUPreInt.reset();
+
+    pCurF->ComputeIMUPreIntSinceLastFrame(pLastF,IMUPreInt);
+
+    return IMUPreInt;
 }
 
 }

@@ -134,6 +134,12 @@ private:
     std::mutex mutex_obs_;
     std::mutex mutex_pose_;
 
+
+    //*****************************************************************
+
+public:
+    void updateScale(double& scale);
+
 };
 
 //typedef std::list<MapPoint::Ptr> MapPoints;

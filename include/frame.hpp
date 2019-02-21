@@ -7,6 +7,9 @@
 #include "map_point.hpp"
 #include "seed.hpp"
 #include "feature_detector.hpp"
+#include "src/IMU/imudata.hpp"
+#include "src/IMU/NavState.hpp"
+#include "src/IMU/IMUPreintegrator.hpp"
 
 namespace ssvo{
 
@@ -46,6 +49,8 @@ public:
 
     //! Set Extrinsic Matrix
     void setTcw(const SE3d& Tcw);
+
+    void setTwb(const SE3d& Twb);
 
     bool isVisiable(const Vector3d &xyz_w, const int border = 0);
 
@@ -92,9 +97,14 @@ public:
     inline static Ptr create(const cv::Mat& img, const double timestamp, AbstractCamera::Ptr cam)
     { return Ptr(new Frame(img, timestamp, cam)); }
 
+    inline static Ptr create(const cv::Mat& img, const double timestamp, AbstractCamera::Ptr cam, const std::vector<ssvo::IMUData> &vimu)
+    { return Ptr(new Frame(img, timestamp, cam, vimu)); }
+
 protected:
 
     Frame(const cv::Mat& img, const double timestamp, const AbstractCamera::Ptr &cam);
+
+    Frame(const cv::Mat& img, const double timestamp, const AbstractCamera::Ptr &cam, const std::vector<ssvo::IMUData> &vimu);
 
     Frame(const ImgPyr& img_pyr, const uint64_t id, const double timestamp, const AbstractCamera::Ptr &cam);
 
@@ -113,7 +123,18 @@ public:
     static float light_affine_a_;
     static float light_affine_b_;
 
-    SE3d optimal_Tcw_;//! for optimization
+    Sophus::SE3d optimal_Tcw_;//! for optimization
+
+
+    //! for vi optimization
+    Sophus::SE3d optimal_Twb_;//! for optimization
+    Eigen::Vector3d optimal_v_;//! for optimization
+    Sophus::Vector6d optimal_detla_bias_;//! for optimization
+    Sophus::Vector6d optimal_PR_;//! for optimization
+//    Sophus::Vector6d optimal_PRV_;//! for optimization
+//    Sophus::Vector6d optimal_PVR_;//! for optimization
+
+
 
     double disparity_;//! for depth filter
 
@@ -132,6 +153,10 @@ protected:
     SE3d Twc_;
     Vector3d Dw_;
 
+    //!for imu
+    SE3d Tbw_;
+    SE3d Twb_;
+
     std::shared_ptr<KeyFrame> ref_keyframe_;
 
     std::mutex mutex_pose_;
@@ -141,6 +166,30 @@ protected:
 private:
 
     ImgPyr optical_pyr_;
+
+
+
+//! imu--------------------
+public:
+
+    void ComputeIMUPreIntSinceLastFrame(const Frame::Ptr pLastF, IMUPreintegrator& imupreint) const;
+    void UpdatePoseFromNS(const Matrix4d &Tbc);
+    void SetInitialNavStateAndBias(const NavState& ns);
+    void UpdateNavState(const IMUPreintegrator& imupreint, const Vector3d& gw);
+    const NavState& GetNavState(void) const;
+    void SetNavState(const NavState& ns);
+    void SetNavStateBiasGyr(const Vector3d &bg);
+    void SetNavStateBiasAcc(const Vector3d &ba);
+
+    // IMU Data from last Frame to this Frame 构造帧的时候赋值
+    std::vector<IMUData> mvIMUDataSinceLastFrame;
+
+    // For pose optimization, use as prior and prior information(inverse covariance)
+    Matrix<double,15,15> mMargCovInv;
+    NavState mNavStatePrior;
+
+protected:
+    NavState mNavState;
 };
 
 }
