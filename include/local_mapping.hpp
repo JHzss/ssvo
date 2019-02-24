@@ -172,7 +172,7 @@ public:
     Eigen::Matrix3d GetRwiInit(void);
 
     bool GetMapUpdateFlagForTracking();
-    void SetMapUpdateFlagInTracking(bool bflag);
+    void SetMapUpdateFlagForTracking(bool bflag);
     KeyFrame::Ptr GetMapUpdateKF();
 
     const KeyFrame::Ptr GetCurrentKF(void) const {return mpCurrentKeyFrame;}

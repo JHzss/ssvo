@@ -51,6 +51,9 @@ public:
         return FinishedGBA_;
     }
 
+    bool GetMapUpdateFlagForTracking();
+    void SetMapUpdateFlagForTracking(bool bflag);
+
 public:
     std::list<KeyFrame::Ptr> keyFramesList_; //list-快速的插入和删除，可以在两端进行操作
 
@@ -63,6 +66,9 @@ public:
     uint64_t LastLoopKFid_;
 
     bool update_finish_;
+
+    std::mutex mMutexMapUpdateFlag;
+    bool mbMapUpdateFlagForTracking;
 
 
 private:

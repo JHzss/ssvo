@@ -72,7 +72,7 @@ LocalMapper::LocalMapper(DBoW3::Vocabulary* vocabulary, DBoW3::Database* databas
         fast_detector_(fast), report_(report), verbose_(report&&verbose),
         mapping_thread_(nullptr), stop_require_(false), vocabulary_(vocabulary), database_(database),
         RunningGBA_(false), FinishedGBA_(true), StopGBA_(false), thread_GBA_(NULL),
-        FullBAIdx_(0),update_finish_(false),loop_time_(0)
+        FullBAIdx_(0),update_finish_(false),loop_time_(0),mbMapUpdateFlagForTracking(false)
 {
     mbVINSInited = false;
     mbFirstTry = true;
@@ -268,10 +268,13 @@ void LocalMapper::run()
     {
         finish_once_ = false;
         KeyFrame::Ptr keyframe_cur = checkNewKeyFrame();
-        mpCurrentKeyFrame = keyframe_cur;
+
 
         if(keyframe_cur)
         {
+            mpCurrentKeyFrame = keyframe_cur;
+            DeleteBadInLocalWindow();
+            AddToLocalWindow(mpCurrentKeyFrame);
             std::cout<<"LocalMapper deal new keyframe～"<<std::endl;
             mapTrace->startTimer("total");
             std::list<MapPoint::Ptr> bad_mpts;
@@ -289,11 +292,15 @@ void LocalMapper::run()
                 if(!GetVINSInited())
                 {
                     Optimizer::localBundleAdjustment(keyframe_cur, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, report_, verbose_);
+//                    SetMapUpdateFlagForTracking(true);
                 }
                 else
                 {
-                    Optimizer::localBundleAdjustment(keyframe_cur, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, report_, verbose_);
-//                    Optimizer::LocalBAPRVIDP(keyframe_cur, mlLocalKeyFrames, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, mGravityVec, report_, verbose_);
+//                    Optimizer::localBundleAdjustment(keyframe_cur, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, report_, verbose_);
+                    std::vector<KeyFrame::Ptr> mlLocalKeyFrames_vec;
+                    mlLocalKeyFrames_vec.assign(mlLocalKeyFrames.begin(),mlLocalKeyFrames.end());
+                    Optimizer::LocalBAPRVIDP(map_, keyframe_cur, mlLocalKeyFrames_vec, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, mGravityVec, report_, verbose_);
+                    SetMapUpdateFlagForTracking(true);
                 }
 
                 if(!ImuConfigParam::GetRealTimeFlag())
@@ -303,11 +310,11 @@ void LocalMapper::run()
                     {
                         bool tmpbool = TryInitVIO();
                         SetVINSInited(tmpbool);
-                        if(tmpbool)
-                        {
-                            // Set initialization flag
-                            SetFirstVINSInited(true);
-                        }
+//                        if(tmpbool)
+//                        {
+//                            // Set initialization flag
+//                            SetFirstVINSInited(true);
+//                        }
 
                     }
                 }
@@ -325,8 +332,7 @@ void LocalMapper::run()
             mapTrace->stopTimer("dbow");
 
             //todo 删除滑窗中关键帧是否需要对预积分的值进行处理，也就是
-            DeleteBadInLocalWindow();
-            AddToLocalWindow(mpCurrentKeyFrame);
+
 
             mapTrace->stopTimer("total");
             mapTrace->writeToFile();
@@ -384,6 +390,7 @@ void LocalMapper::insertKeyFrame(const KeyFrame::Ptr &keyframe)
 
             mapTrace->startTimer("local_ba");
             Optimizer::localBundleAdjustment(keyframe, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, report_, verbose_);
+            SetMapUpdateFlagForTracking(true);
             mapTrace->stopTimer("local_ba");
         }
 
@@ -1127,7 +1134,7 @@ bool LocalMapper::GetMapUpdateFlagForTracking()
     return mbMapUpdateFlagForTracking;
 }
 
-void LocalMapper::SetMapUpdateFlagInTracking(bool bflag)
+void LocalMapper::SetMapUpdateFlagForTracking(bool bflag)
 {
     std::unique_lock<std::mutex> lock(mMutexMapUpdateFlag);
     mbMapUpdateFlagForTracking = bflag;
@@ -1200,44 +1207,41 @@ void LocalMapper::VINSInitThread()
 //! 在LocalMapper中 只要地图中的关键帧的数目足够多就进行VIO初始化
 bool LocalMapper::TryInitVIO()
 {
-    std::cout<<"-----------------TryInitVIO------------------"<<mpCurrentKeyFrame->id_<<std::endl;
+    LOG(WARNING)<<"[LocalMapper] TryInitVIO!"<<mpCurrentKeyFrame->id_<<std::endl;
     if(mpCurrentKeyFrame->id_ <= mnLocalWindowSize+1)
     {
-        std::cout<<"-----no enough kf in mnLocalWindowSize-----"<<std::endl;
+        LOG(WARNING)<<"No enough kf in mnLocalWindowSize to Init."<<std::endl;
         return false;
     }
 
-    bool bVIOInited = true;
-
+//    bool bVIOInited = true;
 
     //! 判断时间，保证初始化的时间大于15秒，这里放的位置与VIORB不一样，因此求不出来这15秒内尺度等变量的优化曲线，只能得到一个优化的值。因为GBA太费时间了，还没有解决这个问题，因此不能每次都GBA
-//    bool bVIOInited = false;
-//    if(mbFirstTry)
-//    {
-//        mbFirstTry = false;
-//        mnStartTime = mpCurrentKeyFrame->timestamp_;
-//    }
-//    if(mpCurrentKeyFrame->timestamp_ - mnStartTime >= ImuConfigParam::GetVINSInitTime())
-//    {
-//        bVIOInited = true;
-//    } else
-//    {
-//        std::cout<<"No enough time to init!"<<std::endl;
-//        return false;
-//    }
-
-    //设置待保存量的文件
+    bool bVIOInited = false;
+    if(mbFirstTry)
+    {
+        mbFirstTry = false;
+        mnStartTime = mpCurrentKeyFrame->timestamp_;
+    }
+    if(mpCurrentKeyFrame->timestamp_ - mnStartTime >= ImuConfigParam::GetVINSInitTime())
+    {
+        bVIOInited = true;
+    } else
+    {
+        std::cout<<"No enough time to init!"<<std::endl;
+        return false;
+    }
 
     std::unique_lock<std::mutex> lock(map_->mutex_update_);
 
+    //设置待保存量的文件
     static bool fopened = false;
-
     /**
      * finit_traj 全局BA（步骤1）优化之后的轨迹
      * finit_traj_afterScale 添加尺度之后的轨迹
      * finit_traj_afterScale_gba 添加尺度后又GBA之后的轨迹
      */
-    static std::ofstream fgw,fscale,fbiasa,fcondnum,ftime,fbiasg,finit_traj,finit_traj_afterScale,finit_traj_afterScale_gba;
+    static std::ofstream fgw,fscale,fbiasa,fcondnum,ftime,fbiasg,finit_traj,finit_traj_afterScale,finit_traj_afterScale_gba,finit_traj_biasa,finit_traj_biasg;
     string tmpfilepath = ImuConfigParam::getTmpFilePath();
     //! save data
     if(!fopened)
@@ -1253,6 +1257,8 @@ bool LocalMapper::TryInitVIO()
         finit_traj.open(tmpfilepath+"init_traj.txt");
         finit_traj_afterScale.open(tmpfilepath+"init_traj_scale.txt");
         finit_traj_afterScale_gba.open(tmpfilepath+"init_traj_scale_gba.txt");
+        finit_traj_biasa.open(tmpfilepath+"init_traj_biasa.txt");
+        finit_traj_biasg.open(tmpfilepath+"init_traj_biasg.txt");
         if(fgw.is_open() && fscale.is_open() && fbiasa.is_open() &&
            fcondnum.is_open() && ftime.is_open() && fbiasg.is_open())
             fopened = true;
@@ -1269,22 +1275,19 @@ bool LocalMapper::TryInitVIO()
         fbiasg<<std::fixed<<std::setprecision(6);
     }
 
-    //! 步骤1. 先进行全局BA
+    //! 步骤1. 先进行全局BA并等待位姿优化完成
     Optimizer::globleBundleAdjustment(map_,20,0,false,false);
     RunningGBA_ = true;
     FinishedGBA_ = false;
     StopGBA_ = false;
     thread_GBA_ = new std::thread(&LocalMapper::RunGlobalBundleAdjustment,this,mpCurrentKeyFrame->id_,false);
-//    release();
     //必须等优化完才能进行下一步的优化，否则求出的尺度和位姿是不对应的，会有错
     while(!FinishedGBA_)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-//    return true;
-
-    //保存 finit_traj 轨迹
+    // 保存 finit_traj 轨迹
     finit_traj << std::fixed;
     std::vector<KeyFrame::Ptr> kfs = map_->getAllKeyFrames();
     std::sort(kfs.begin(),kfs.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->timestamp_<kf2->timestamp_;});
@@ -1308,7 +1311,7 @@ bool LocalMapper::TryInitVIO()
     Eigen::Vector3d E_pcb = -E_Rcb*E_pbc;
 
     // Use all KeyFrames in map to compute
-    std::vector<KeyFrame::Ptr> vScaleGravityKF = map_->getAllKeyFrames(mpCurrentKeyFrame->id_);
+    std::vector<KeyFrame::Ptr> vScaleGravityKF = map_->getAllKeyFrames();
     //从小到大排序
     std::sort(vScaleGravityKF.begin(),vScaleGravityKF.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->id_<kf2->id_;});
     int N = vScaleGravityKF.size();
@@ -1334,10 +1337,9 @@ bool LocalMapper::TryInitVIO()
     /** @brief 步骤2. 计算初始的陀螺仪bias，使用Gauss-Newton的优化方法。
       * @ 计算结果： -0.0037  0.02217 0.0798
       * @ 陀螺仪bias优化结果基本正确，说明关键帧的预积分过程中与陀螺仪bias相关的变量计算是正确的。
-      * @ 仅计算，未对关键帧的陀螺仪bias进行更新
+      * @ 仅计算，未对关键帧的陀螺仪bias进行更新，后面将ba也求出来之后统一更新
       */
     Vector3d bgest = Optimizer::OptimizeInitialGyroBias(vE_Twc,vIMUPreInt);
-
 
     //! 步骤3. 更新 biasg 并且重新预积分。关键帧中的预积分信息在ba，bg，g，都估计完事之后再更新。Update biasg and pre-integration in LocalWindow. Remember to reset back to zero
     /*
@@ -1562,13 +1564,7 @@ bool LocalMapper::TryInitVIO()
         C.block(3*i,1,3,2) = phi.block(0,0,3,2);
         C.block(3*i,3,3,3) = zeta;
         D.block(3*i,0,3,1) = psi;
-//        lambda.copyTo(C.rowRange(3*i+0,3*i+3).col(0));
-//        phi.colRange(0,2).copyTo(C.rowRange(3*i+0,3*i+3).colRange(1,3)); //only the first 2 columns, third term in dtheta is zero, here compute dthetaxy 2x1.
-//        zeta.copyTo(C.rowRange(3*i+0,3*i+3).colRange(3,6));
-//        psi.copyTo(D.rowRange(3*i+0,3*i+3));
 
-        // Debug log
-        //cout<<"iter "<<i<<endl;
     }
     Eigen::MatrixXd u2{3*(N-2),6};
     Eigen::MatrixXd w2{6,6};
@@ -1621,7 +1617,6 @@ bool LocalMapper::TryInitVIO()
     double s_ = y(0,0);
     Matrix<double,2,1> dthetaxy = y.block(1,0,2,1);
     Matrix<double,3,1> dbiasa_ = y.block(3,0,3,1);
-    Vector3d dbiasa_eig = dbiasa_;
 
     // dtheta = [dx;dy;0]
     Matrix<double,3,1> dtheta = Matrix<double,3,1>::Zero();
@@ -1656,7 +1651,6 @@ bool LocalMapper::TryInitVIO()
     }
 
     std::cout<<"Finish calculate bg s g ba!"<<std::endl;
-
     // todo: 怎么判断初始化的结果？ Add some logic or strategy to confirm init status
 
     if(bVIOInited)
@@ -1676,38 +1670,50 @@ bool LocalMapper::TryInitVIO()
         std::cout<<"<================= Begin update pose and v =================>"<<std::endl;
         SetUpdatingInitPoses(true);
         {
-//            while(update_finish_)
-//            {
-//                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-//            }
+
+            //! 步骤7. 跟新所有的变量后，重新计算预积分的值
+            for(std::vector<KeyFrame::Ptr>::const_iterator vit=vScaleGravityKF.begin(), vend=vScaleGravityKF.end(); vit!=vend; vit++)
+            {
+                KeyFrame::Ptr pKF = *vit;
+                if(pKF->isBad()) continue;
+
+                // Position and rotation of visual SLAM
+                Vector3d wPc = pKF->Twc().translation();                   // wPc
+                Matrix3d Rwc = pKF->Twc().rotationMatrix();            // Rwc
+                // Set position and rotation of navstate
+                Vector3d wPb = scale * wPc + Rwc * E_pcb;
+                pKF->SetNavStatePos(wPb);
+                pKF->SetNavStateRot(Rwc * E_Rcb);
+                // Update bias of Gyr & Acc
+                pKF->SetNavStateBiasGyr(bgest);
+                pKF->SetNavStateBiasAcc(dbiasa_);
+                // Set delta_bias to zero. (only updated during optimization)
+                pKF->SetNavStateDeltaBg(Eigen::Vector3d::Zero());
+                pKF->SetNavStateDeltaBa(Eigen::Vector3d::Zero());
+            }
+
             int cnt=0;
+            for(std::vector<KeyFrame::Ptr>::const_iterator vit=vScaleGravityKF.begin(), vend=vScaleGravityKF.end(); vit!=vend; vit++)
+            {
+                KeyFrame::Ptr pKF = *vit;
+                if(pKF->isBad()) continue;
+                pKF->ComputePreInt();
+            }
 
             //! 设置速度
             for(std::vector<KeyFrame::Ptr>::const_iterator vit=vScaleGravityKF.begin(), vend=vScaleGravityKF.end(); vit!=vend; vit++,cnt++)
             {
                 KeyFrame::Ptr pKF = *vit;
                 if(pKF->isBad()) continue;
-                if(pKF!=vScaleGravityKF[cnt]) std::cerr<<"pKF!=vScaleGravityKF[cnt], id: "<<pKF->id_<<" != "<<vScaleGravityKF[cnt]->id_<<std::endl;
-                // Position and rotation of visual SLAM
-                Vector3d wPc = pKF->Twc().translation();                   // wPc
-                Matrix3d Rwc = pKF->Twc().rotationMatrix();            // Rwc
-                // Set position and rotation of navstate
-                Vector3d wPb = scale*wPc + Rwc*E_pcb;
-                pKF->SetNavStatePos(wPb);
-                pKF->SetNavStateRot(Rwc*E_Rcb);
-                // Update bias of Gyr & Acc
-                pKF->SetNavStateBiasGyr(bgest);
-                pKF->SetNavStateBiasAcc(dbiasa_eig);
-                // Set delta_bias to zero. (only updated during optimization)
-                pKF->SetNavStateDeltaBg(Eigen::Vector3d::Zero());
-                pKF->SetNavStateDeltaBa(Eigen::Vector3d::Zero());
-                // Step 4.
+
                 // compute velocity
                 if(pKF != vScaleGravityKF.back())
                 {
+                    Vector3d wPc = pKF->Twc().translation();                   // wPc
+                    Matrix3d Rwc = pKF->Twc().rotationMatrix();            // Rwc
+
                     KeyFrame::Ptr pKFnext = pKF->GetNextKeyFrame();
-                    if(!pKFnext) std::cerr<<"pKFnext is NULL, cnt="<<cnt<<" pkf id:"<<pKF->id_<<", pKFnext:"<<pKFnext<<std::endl;
-                    if(pKFnext!=vScaleGravityKF[cnt+1]) std::cerr<<"pKFnext!=vScaleGravityKF[cnt+1], cnt="<<cnt<<", id: "<<pKFnext->id_<<" != "<<vScaleGravityKF[cnt+1]->id_<<std::endl;
+                    LOG_ASSERT(pKFnext != NULL)<<"Why no NextKeyFrame"<<std::endl;
                     // IMU pre-int between pKF ~ pKFnext
                     const IMUPreintegrator& imupreint = pKFnext->GetIMUPreInt();
                     // Time from this(pKF) to next(pKFnext)
@@ -1720,10 +1726,10 @@ bool LocalMapper::TryInitVIO()
 
                     Eigen::Vector3d vel = - 1./dt*( scale*(wPc - wPcnext) + (Rwc - Rwcnext)*E_pcb + Rwc*E_Rcb*(dp + Jpba*dbiasa_) + 0.5*gw*dt*dt );
 
-//                    std::cout<<"kf"<<pKF->id_<<"-vel:"<<vel.transpose()<<std::endl;
+                    std::cout<<"kf"<<pKF->id_<<"-vel:"<<vel.transpose()<<std::endl;
                     pKF->SetNavStateVel(vel);
                 }
-                else
+                else // 最后一帧关键帧的速度
                 {
                     std::cout<<"-----------here is the last KF in vScaleGravityKF------------"<<std::endl;
                     // If this is the last KeyFrame, no 'next' KeyFrame exists
@@ -1737,45 +1743,17 @@ bool LocalMapper::TryInitVIO()
                     //
                     Eigen::Vector3d velpre = pKFprev->GetNavState().Get_V();
                     Eigen::Matrix3d rotpre = pKFprev->GetNavState().Get_RotMatrix();
-                    Eigen::Vector3d veleig = velpre + gweig*dt + rotpre*( dv + Jvba*dbiasa_eig );
+                    Eigen::Vector3d veleig = velpre + gweig*dt + rotpre*( dv + Jvba*dbiasa_ );
                     pKF->SetNavStateVel(veleig);
-//                    std::cout<<"kf"<<pKF->id_<<"-vel:"<<veleig.transpose()<<std::endl;
+                    std::cout<<"last kf"<<pKF->id_<<"-vel:"<<veleig.transpose()<<std::endl;
 
                 }
             }
-//            std::abort();
+
             std::cout<<"Finish update V"<<std::endl;
+//            std::abort();
 
-            //! 步骤7. 跟新所有的变量后，重新计算预积分的值
-            for(std::vector<KeyFrame::Ptr>::const_iterator vit=vScaleGravityKF.begin(), vend=vScaleGravityKF.end(); vit!=vend; vit++)
-            {
-                KeyFrame::Ptr pKF = *vit;
-                if(pKF->isBad()) continue;
-                pKF->ComputePreInt();
-            }
-
-//            return true;
             //! 更新关键帧和地图点的位姿（乘上尺度）
-
-//            std::cout<<"correct pose?"<<std::endl;
-//            std::unique_lock<std::mutex> lock1(update_finish_mutex_);
-//            for(std::vector<KeyFrame::Ptr>::const_iterator vit=vScaleGravityKF.begin(), vend=vScaleGravityKF.end(); vit!=vend; vit++)
-//            {
-//                KeyFrame::Ptr pKF = *vit;
-//                pKF->beforeUpdate_Tcw_ = pKF->Tcw();
-//            }
-//            setStop();
-//            if(update_finish_ == false)
-//            {
-//                std::cout<<"correct pose?"<<std::endl;
-//                std::unique_lock<std::mutex> lock1(update_finish_mutex_);
-//                for(std::vector<KeyFrame::Ptr>::const_iterator vit=vScaleGravityKF.begin(), vend=vScaleGravityKF.end(); vit!=vend; vit++)
-//                {
-//                    KeyFrame::Ptr pKF = *vit;
-//                    pKF->beforeUpdate_Tcw_ = pKF->Tcw();
-//                }
-//                update_finish_ = true;
-//            }
 
 
             std::vector<KeyFrame::Ptr> mspKeyFrames = map_->getAllKeyFrames();
@@ -1798,100 +1776,95 @@ bool LocalMapper::TryInitVIO()
             }
             std::cout<<std::endl<<"... Map scale updated ..."<<std::endl<<std::endl;
 
-//            update_finish_ = true;
-//            release();
-
-
-            //! 将没有参与初始化的关键帧的NavState也设置一下
-            if(pNewestKF != mpCurrentKeyFrame)
-            {
-                KeyFrame::Ptr pKF;
-                // step1. bias&d_bias
-                pKF = pNewestKF;
-                while(pKF->id_ < mpCurrentKeyFrame->id_)
-                {
-                    std::cout<<"mpCurrentKeyFrame id: "<<mpCurrentKeyFrame->id_<<std::endl;
-                    std::cout<<"pKF id: "<<pKF->id_<<std::endl;
-                    pKF = pKF->GetNextKeyFrame();
-                    std::cout<<"pKF id: "<<pKF->id_<<std::endl;
-                    // Update bias of Gyr & Acc
-                    pKF->SetNavStateBiasGyr(bgest);
-                    pKF->SetNavStateBiasAcc(dbiasa_eig);
-                    // Set delta_bias to zero. (only updated during optimization)
-                    pKF->SetNavStateDeltaBg(Eigen::Vector3d::Zero());
-                    pKF->SetNavStateDeltaBa(Eigen::Vector3d::Zero());
-                }
-
-
-                // step2. re-compute pre-integration
-                //！ 然后进行重新积分
-                pKF = pNewestKF;
-                while(pKF->id_ < mpCurrentKeyFrame->id_)
-                {
-                    pKF = pKF->GetNextKeyFrame();
-
-                    pKF->ComputePreInt();
-                }
-
-                // step3. update pos/rot
-                pKF = pNewestKF;
-
-                //todo 与viorb不同，因为localmapper队列与map的时序问题，产生一点问题
-                while(pKF->id_ < mpCurrentKeyFrame->id_)
-                {
-                    pKF = pKF->GetNextKeyFrame();
-
-                    // Update rot/pos
-                    // Position and rotation of visual SLAM
-                    Vector3d wPc = pKF->Twc().translation();                   // wPc
-                    Matrix3d Rwc = pKF->Twc().rotationMatrix();            // Rwc
-                    Vector3d wPb = wPc + Rwc*E_pcb;
-                    pKF->SetNavStatePos(wPb);
-                    pKF->SetNavStateRot(Rwc*E_Rcb);
-
-                    //pKF->SetNavState();
-
-                    if(pKF != mpCurrentKeyFrame)
-                    {
-                        KeyFrame::Ptr pKFnext = pKF->GetNextKeyFrame();
-                        // IMU pre-int between pKF ~ pKFnext
-                        const IMUPreintegrator& imupreint = pKFnext->GetIMUPreInt();
-                        // Time from this(pKF) to next(pKFnext)
-                        double dt = imupreint.getDeltaTime();                                       // deltaTime
-
-                        Eigen::Vector3d dp = imupreint.getDeltaP();       // deltaP
-                        Eigen::Matrix3d Jpba = imupreint.getJPBiasa();    // J_deltaP_biasa
-                        Vector3d wPcnext = pKFnext->Twc().translation();           // wPc next
-                        Matrix3d Rwcnext = pKFnext->Twc().rotationMatrix();    // Rwc next
-
-                        Eigen::Vector3d vel = - 1./dt*((wPc - wPcnext) + (Rwc - Rwcnext)*E_pcb + Rwc*E_Rcb*(dp + Jpba*dbiasa_) + 0.5*gw*dt*dt );
-                        Eigen::Vector3d veleig = vel;
-                        pKF->SetNavStateVel(veleig);
-
-                    }
-                    else
-                    {
-                        // If this is the last KeyFrame, no 'next' KeyFrame exists
-                        KeyFrame::Ptr pKFprev = pKF->GetPrevKeyFrame();
-                        const IMUPreintegrator& imupreint_prev_cur = pKF->GetIMUPreInt();
-                        double dt = imupreint_prev_cur.getDeltaTime();
-                        Eigen::Matrix3d Jvba = imupreint_prev_cur.getJVBiasa();
-                        Eigen::Vector3d dv = imupreint_prev_cur.getDeltaV();
-                        //
-                        Eigen::Vector3d velpre = pKFprev->GetNavState().Get_V();
-                        Eigen::Matrix3d rotpre = pKFprev->GetNavState().Get_RotMatrix();
-                        Eigen::Vector3d veleig = velpre + gweig*dt + rotpre*( dv + Jvba*dbiasa_eig );
-                        pKF->SetNavStateVel(veleig);
-                    }
-
-                }
-            }
+            //! 将没有参与初始化的关键帧的NavState也设置一下，这个应该用不到了
+//            if(pNewestKF != mpCurrentKeyFrame)
+//            {
+//                KeyFrame::Ptr pKF;
+//                // step1. bias&d_bias
+//                pKF = pNewestKF;
+//                while(pKF->id_ < mpCurrentKeyFrame->id_)
+//                {
+//                    std::cout<<"mpCurrentKeyFrame id: "<<mpCurrentKeyFrame->id_<<std::endl;
+//                    std::cout<<"pKF id: "<<pKF->id_<<std::endl;
+//                    pKF = pKF->GetNextKeyFrame();
+//                    std::cout<<"pKF id: "<<pKF->id_<<std::endl;
+//                    // Update bias of Gyr & Acc
+//                    pKF->SetNavStateBiasGyr(bgest);
+//                    pKF->SetNavStateBiasAcc(dbiasa_);
+//                    // Set delta_bias to zero. (only updated during optimization)
+//                    pKF->SetNavStateDeltaBg(Eigen::Vector3d::Zero());
+//                    pKF->SetNavStateDeltaBa(Eigen::Vector3d::Zero());
+//                }
+//
+//
+//                // step2. re-compute pre-integration
+//                //！ 然后进行重新积分
+//                pKF = pNewestKF;
+//                while(pKF->id_ < mpCurrentKeyFrame->id_)
+//                {
+//                    pKF = pKF->GetNextKeyFrame();
+//
+//                    pKF->ComputePreInt();
+//                }
+//
+//                // step3. update pos/rot
+//                pKF = pNewestKF;
+//
+//                //todo 与viorb不同，因为localmapper队列与map的时序问题，产生一点问题
+//                while(pKF->id_ < mpCurrentKeyFrame->id_)
+//                {
+//                    pKF = pKF->GetNextKeyFrame();
+//
+//                    // Update rot/pos
+//                    // Position and rotation of visual SLAM
+//                    Vector3d wPc = pKF->Twc().translation();                   // wPc
+//                    Matrix3d Rwc = pKF->Twc().rotationMatrix();            // Rwc
+//                    Vector3d wPb = wPc + Rwc*E_pcb;
+//                    pKF->SetNavStatePos(wPb);
+//                    pKF->SetNavStateRot(Rwc*E_Rcb);
+//
+//                    //pKF->SetNavState();
+//
+//                    if(pKF != mpCurrentKeyFrame)
+//                    {
+//                        KeyFrame::Ptr pKFnext = pKF->GetNextKeyFrame();
+//                        // IMU pre-int between pKF ~ pKFnext
+//                        const IMUPreintegrator& imupreint = pKFnext->GetIMUPreInt();
+//                        // Time from this(pKF) to next(pKFnext)
+//                        double dt = imupreint.getDeltaTime();                                       // deltaTime
+//
+//                        Eigen::Vector3d dp = imupreint.getDeltaP();       // deltaP
+//                        Eigen::Matrix3d Jpba = imupreint.getJPBiasa();    // J_deltaP_biasa
+//                        Vector3d wPcnext = pKFnext->Twc().translation();           // wPc next
+//                        Matrix3d Rwcnext = pKFnext->Twc().rotationMatrix();    // Rwc next
+//
+//                        Eigen::Vector3d vel = - 1./dt*((wPc - wPcnext) + (Rwc - Rwcnext)*E_pcb + Rwc*E_Rcb*(dp + Jpba*dbiasa_) + 0.5*gw*dt*dt );
+//                        Eigen::Vector3d veleig = vel;
+//                        pKF->SetNavStateVel(veleig);
+//
+//                    }
+//                    else
+//                    {
+//                        // If this is the last KeyFrame, no 'next' KeyFrame exists
+//                        KeyFrame::Ptr pKFprev = pKF->GetPrevKeyFrame();
+//                        const IMUPreintegrator& imupreint_prev_cur = pKF->GetIMUPreInt();
+//                        double dt = imupreint_prev_cur.getDeltaTime();
+//                        Eigen::Matrix3d Jvba = imupreint_prev_cur.getJVBiasa();
+//                        Eigen::Vector3d dv = imupreint_prev_cur.getDeltaV();
+//                        //
+//                        Eigen::Vector3d velpre = pKFprev->GetNavState().Get_V();
+//                        Eigen::Matrix3d rotpre = pKFprev->GetNavState().Get_RotMatrix();
+//                        Eigen::Vector3d veleig = velpre + gweig*dt + rotpre*( dv + Jvba*dbiasa_ );
+//                        pKF->SetNavStateVel(veleig);
+//                    }
+//
+//                }
+//            }
             std::cout<<std::endl<<"... Map NavState updated ..."<<std::endl<<std::endl;
             SetFirstVINSInited(true);
             SetVINSInited(true);
         }
         SetUpdatingInitPoses(false);
-
 
         //! 保存加上尺度的轨迹
         finit_traj_afterScale << std::fixed;
@@ -1909,7 +1882,7 @@ bool LocalMapper::TryInitVIO()
 
         //! 保存各个帧的 bias
 
-        // Run global BA after inited
+        //! 在进行Globa BA并保存轨迹
         uint64_t nGBAKF = mpCurrentKeyFrame->id_;
         RunningGBA_ = true;
         FinishedGBA_ = false;
@@ -1921,6 +1894,8 @@ bool LocalMapper::TryInitVIO()
         }
 
         finit_traj_afterScale_gba << std::fixed;
+        finit_traj_biasa<< std::fixed;
+        finit_traj_biasg<< std::fixed;
         std::vector<KeyFrame::Ptr> kfs_scale_gba = map_->getAllKeyFrames();
         std::sort(kfs_scale_gba.begin(),kfs_scale_gba.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->timestamp_<kf2->timestamp_;});
         for(auto kf:kfs_scale_gba)
@@ -1930,24 +1905,23 @@ bool LocalMapper::TryInitVIO()
             Quaterniond q = frame_pose.unit_quaternion();
             finit_traj_afterScale_gba << std::setprecision(6) << kf->timestamp_ << " "
                                   << std::setprecision(9) << t[0] << " " << t[1] << " " << t[2] << " " << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+            Vector3d ba = kf->GetNavState().Get_BiasAcc();
+            Vector3d bg = kf->GetNavState().Get_BiasGyr();
+            finit_traj_biasa << std::setprecision(6) << kf->timestamp_ << " "<< std::setprecision(9)<< ba[0] << " " << ba[1] << " " << ba[2] << std::endl;
+            finit_traj_biasg << std::setprecision(6) << kf->timestamp_ << " "<< std::setprecision(9)<< bg[0] << " " << bg[1] << " " << bg[2] << std::endl;
         }
         finit_traj_afterScale_gba.close();
-
-
-        //todo 优化为参与globa BA的关键帧的位姿
+        finit_traj_biasa.close();
+        finit_traj_biasg.close();
 
         std::cout<<"==============Finish global BA after v-i init================"<<std::endl;
 
         SetFlagInitGBAFinish(true);
-
-        SetMapUpdateFlagInTracking(true);
-
-//        update_finish_ = true;
+        SetMapUpdateFlagForTracking(true);
         release();
     }
-
     std::cout<<"-----------------End InitVIO------------------"<<std::endl;
-//    std::abort();
+    std::abort();
     return bVIOInited;
 }
 
@@ -1964,13 +1938,17 @@ void LocalMapper::AddToLocalWindow(KeyFrame::Ptr pKF)
         while(mlLocalKeyFrames.size() < mnLocalWindowSize && pKF0->GetPrevKeyFrame()!=NULL)
         {
             pKF0 = pKF0->GetPrevKeyFrame();
-            mlLocalKeyFrames.push_front(pKF0);
+            if(!pKF0->isBad())
+                mlLocalKeyFrames.push_front(pKF0);
         }
     }
 }
 
 void LocalMapper::DeleteBadInLocalWindow(void)
 {
+    if(mlLocalKeyFrames.empty())
+        return;
+
     std::list<KeyFrame::Ptr>::iterator lit = mlLocalKeyFrames.begin();
     while(lit != mlLocalKeyFrames.end())
     {
@@ -1990,7 +1968,7 @@ void LocalMapper::DeleteBadInLocalWindow(void)
 
 void LocalMapper::RunGlobalBundleAdjustment(uint64_t nLoopKF,bool vi)
 {
-    LOG(WARNING) << "LocalMapping] Starting Global Bundle Adjustment! " << std::endl;
+    LOG(WARNING) << "[LocalMapping] Starting Global Bundle Adjustment! " << std::endl;
 
 //    int idx = FullBAIdx_;
 

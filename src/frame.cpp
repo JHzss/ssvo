@@ -35,7 +35,7 @@ Frame::Frame(const cv::Mat &img, const double timestamp, const AbstractCamera::P
 Frame::Frame(const cv::Mat &img, const double timestamp, const AbstractCamera::Ptr &cam, const std::vector<ssvo::IMUData> &vimu) :
         id_(next_id_++), timestamp_(timestamp), cam_(cam), max_level_(Config::imageNLevel()-1)
 {
-    //保存两帧之间的imu数据
+    //保存两帧之间的imu数据,这个绝对是正确的
     mvIMUDataSinceLastFrame = vimu;
 
     Tcw_ = SE3d(Matrix3d::Identity(), Vector3d::Zero());
@@ -107,6 +107,8 @@ void Frame::setPose(const SE3d& pose)
     SE3d Tcb(ImuConfigParam::GetEigTbc());
     Twb_ = Twc_ * Tcb;
     Tbw_ = Twb_.inverse();
+
+    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
 }
 
 void Frame::setPose(const Matrix3d& R, const Vector3d& t)
@@ -119,6 +121,9 @@ void Frame::setPose(const Matrix3d& R, const Vector3d& t)
     SE3d Tcb(ImuConfigParam::GetEigTbc());
     Twb_ = Twc_ * Tcb;
     Tbw_ = Twb_.inverse();
+
+    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
+
 }
 
 void Frame::setTcw(const SE3d &Tcw)
@@ -132,6 +137,7 @@ void Frame::setTcw(const SE3d &Tcw)
     Twb_ = Twc_ * Tcb;
     Tbw_ = Twb_.inverse();
 
+    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
 }
 
 void Frame::setTwb(const SE3d &Twb)
@@ -145,6 +151,7 @@ void Frame::setTwb(const SE3d &Twb)
     Twc_ = Tcw_.inverse();
     Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
 
+    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
 }
 
 bool Frame::isVisiable(const Vector3d &xyz_w, const int border)
@@ -419,6 +426,24 @@ void Frame::UpdatePoseFromNS(const Matrix4d &Tbc)
 void Frame::UpdateNavState(const IMUPreintegrator& imupreint, const Vector3d& gw)
 {
 //    Converter::updateNS(mNavState,imupreint,gw);
+    Matrix3d dR = imupreint.getDeltaR();
+    Vector3d dP = imupreint.getDeltaP();
+    Vector3d dV = imupreint.getDeltaV();
+    double dt = imupreint.getDeltaTime();
+
+    Vector3d Pwbpre = mNavState.Get_P();
+    Matrix3d Rwbpre = mNavState.Get_RotMatrix();
+    Vector3d Vwbpre = mNavState.Get_V();
+
+    Matrix3d Rwb = Rwbpre * dR;
+    Vector3d Pwb = Pwbpre + Vwbpre*dt + 0.5*gw*dt*dt + Rwbpre*dP;
+    Vector3d Vwb = Vwbpre + gw*dt + Rwbpre*dV;
+
+    // Here assume that the pre-integration is re-computed after bias updated, so the bias term is ignored
+    mNavState.Set_Pos(Pwb);
+    mNavState.Set_Vel(Vwb);
+    mNavState.Set_Rot(Rwb);
+
 }
 
 const NavState& Frame::GetNavState(void) const
@@ -428,6 +453,7 @@ const NavState& Frame::GetNavState(void) const
 
 void Frame::SetInitialNavStateAndBias(const NavState& ns)
 {
+    std::unique_lock<std::mutex> lock(mMutexNavState);
     mNavState = ns;
     // Set bias as bias+delta_bias, and reset the delta_bias term
     mNavState.Set_BiasGyr(ns.Get_BiasGyr()+ns.Get_dBias_Gyr());
@@ -450,6 +476,51 @@ void Frame::SetNavStateBiasAcc(const Vector3d &ba)
 void Frame::SetNavState(const NavState& ns)
 {
     mNavState = ns;
+}
+
+void Frame::UpdateNavStatePVRFromTcw(const SE3d &Tcw,const SE3d &Tbc)
+{
+    std::unique_lock<std::mutex> lock(mMutexNavState);
+    SE3d Twb = (Tbc*Tcw).inverse();
+    Matrix3d Rwb = Twb.rotationMatrix();
+    Vector3d Pwb = Twb.translation();
+
+    Matrix3d Rw1 = mNavState.Get_RotMatrix();
+    Vector3d Vw1 = mNavState.Get_V();
+    Vector3d Vw2 = Rwb * Rw1.transpose()*Vw1;   // bV1 = bV2 ==> Rwb1^T*wV1 = Rwb2^T*wV2 ==> wV2 = Rwb2*Rwb1^T*wV1
+
+    mNavState.Set_Pos(Pwb);
+    mNavState.Set_Rot(Rwb);
+    mNavState.Set_Vel(Vw2);
+}
+
+//! 从Navstate设置待优化变量的状态，即赋初值
+void Frame::setOptimizationState()
+{
+    Vector3d Pwb = mNavState.Get_P();
+    Sophus::SO3d Rwb = mNavState.Get_R();
+
+    optimal_PR_[0] = Pwb[0];
+    optimal_PR_[1] = Pwb[1];
+    optimal_PR_[2] = Pwb[2];
+
+    Vector3d phi = Rwb.log();
+
+    optimal_PR_[3] = phi[0];
+    optimal_PR_[4] = phi[1];
+    optimal_PR_[5] = phi[2];
+
+    optimal_v_ = mNavState.Get_V();
+
+    optimal_detla_bias_.segment(0,3) = mNavState.Get_dBias_Gyr();
+    optimal_detla_bias_.segment(3,3) = mNavState.Get_dBias_Acc();
+
+}
+
+const IMUPreintegrator &Frame::GetIMUPreInt(void)
+{
+    std::unique_lock<std::mutex> lock(mMutexIMUData);
+    return mIMUPreInt;
 }
 
 }

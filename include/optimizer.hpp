@@ -78,7 +78,7 @@ public:
     //! 全局BA 用于视-惯初始化完成之后和检测到闭环之后
     static void GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d& gw, int nIterations, const uint64_t nLoopKF = 0, bool report=false, bool verbose=false);
     //! 滑动窗口的优化
-    static void LocalBAPRVIDP(const KeyFrame::Ptr &keyframe,const std::list<KeyFrame::Ptr> &lLocalKeyFrames, std::list<MapPoint::Ptr> &bad_mpts, int size,
+    static void LocalBAPRVIDP(Map::Ptr pMap, const KeyFrame::Ptr keyframe,const std::vector<KeyFrame::Ptr> &actived_keyframes, std::list<MapPoint::Ptr> &bad_mpts, int size,
                               int min_shared_fts,const Vector3d& gw, bool report, bool verbose);
     //! 单帧的位姿优化，用于当前帧的优化
     static int PoseOptimization(Frame::Ptr PFrame, KeyFrame::Ptr pLastKF, const IMUPreintegrator& imupreint, const Vector3d& gw, const bool& bComputeMarg=false);
@@ -164,8 +164,8 @@ public:
         residuals[0] = predicted_x - observed_x_;
         residuals[1] = predicted_y - observed_y_;
 
-        residuals[0] *= weight_;
-        residuals[1] *= weight_;
+        residuals[0] *= weight_*460;
+        residuals[1] *= weight_*460;
 
 //        std::cout<<"ReprojectionErrorSE3 Error: "<< residuals[0] * residuals[0] + residuals[1] * residuals[1] <<std::endl;
 

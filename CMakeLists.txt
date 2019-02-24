@@ -92,6 +92,7 @@ find_package(Eigen 3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Sophus
+set(Sophus_DIR /home/jh/Sophus/build)
 FIND_PACKAGE(Sophus REQUIRED)
 include_directories(${Sophus_INCLUDE_DIRS})
 

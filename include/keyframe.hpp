@@ -97,6 +97,10 @@ public:
     std::vector<Feature::Ptr> featuresInBow;
     std::vector<MapPoint::Ptr> mapPointsInBow;
 
+    // Variables used by the local mapping
+    uint64_t mnBALocalForKF;
+    uint64_t mnBAFixedForKF;
+
 private:
 
     std::map<KeyFrame::Ptr, int> connectedKeyFrames_;
@@ -131,13 +135,13 @@ protected:
 
     // P, V, R, bg, ba, delta_bg, delta_ba (delta_bx is for optimization update)
     //todo 注意位姿更新的时候这个也要更新
-    std::mutex mMutexNavState;
-    NavState mNavState;
+//    NavState mNavState;
 
-    // IMU Data from lask KeyFrame to this KeyFrame
+    // IMU Data from last KeyFrame to this KeyFrame ,构造关键帧的时候用到
     std::mutex mMutexIMUData;
     std::vector<IMUData> mvIMUData;
-    IMUPreintegrator mIMUPreInt;
+    // 关键帧的IMU预积分，是与上一个关键帧之间的预积分。在创建关键帧的时候就会直接积分。基类Frame中也有一个mIMUPreInt，积分的是与上一帧普通帧之间的IMU信息
+    IMUPreintegrator mIMUPreInt; // 关键帧的IMU预积分，是与上一个关键帧之间的预积分，基类Frame中也有一个mIMUPreInt，积分的是与上一帧普通帧之间的IMU信息
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -151,7 +155,8 @@ public:
 
     const IMUPreintegrator & GetIMUPreInt(void);
 
-    void UpdateNavStatePVRFromTcw(const SE3d &Tcw,const SE3d &Tbc);
+
+
     void UpdatePoseFromNS(const Eigen::Matrix4d &Tbc);
     void UpdateNavState(const IMUPreintegrator& imupreint, const Vector3d& gw);
     void SetNavState(const NavState& ns);
@@ -165,9 +170,7 @@ public:
     void SetNavStateDeltaBg(const Vector3d &dbg);
     void SetNavStateDeltaBa(const Vector3d &dba);
 
-    void SetInitialNavStateAndBias(const NavState& ns);
 
-    void setOptimizationState();
 
     // Variables used by loop closing
     NavState mNavStateGBA;       //mTcwGBA

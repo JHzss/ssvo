@@ -181,6 +181,10 @@ public:
     void SetNavStateBiasGyr(const Vector3d &bg);
     void SetNavStateBiasAcc(const Vector3d &ba);
 
+    void UpdateNavStatePVRFromTcw(const SE3d &Tcw,const SE3d &Tbc);
+    void setOptimizationState();
+        const IMUPreintegrator & GetIMUPreInt(void);
+
     // IMU Data from last Frame to this Frame 构造帧的时候赋值
     std::vector<IMUData> mvIMUDataSinceLastFrame;
 
@@ -189,7 +193,12 @@ public:
     NavState mNavStatePrior;
 
 protected:
+    std::mutex mMutexNavState;
     NavState mNavState;
+
+    // IMU Data from lask Frame to this Frame
+    std::mutex mMutexIMUData;
+    IMUPreintegrator mIMUPreInt;
 };
 
 }

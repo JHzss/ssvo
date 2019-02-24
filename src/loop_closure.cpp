@@ -134,7 +134,7 @@ cv::Mat showFeatures(const cv::Mat& src, const std::vector<Feature::Ptr> &featur
 LoopClosure::LoopClosure(DBoW3::Vocabulary* vocabulary, DBoW3::Database* database_):
         vocabulary_(vocabulary), database_(database_),LastLoopKFid_(0),
         ifFinished(true),RunningGBA_(false), FinishedGBA_(true), StopGBA_(false), thread_GBA_(NULL),
-        FullBAIdx_(0),update_finish_(false),loop_time_(0)
+        FullBAIdx_(0),update_finish_(false),loop_time_(0),mbMapUpdateFlagForTracking(false)
 {
     sim3_cw = Sophus::Sim3d();
     mnCovisibilityConsistencyTh = 3;
@@ -931,6 +931,7 @@ void LoopClosure::CorrectLoop()
             }
         }
         update_finish_ = true;
+        SetMapUpdateFlagForTracking(true);
     }
 
     searchAndFuse(CorrectedSim3);
@@ -961,6 +962,8 @@ void LoopClosure::CorrectLoop()
     Optimizer::OptimizeEssentialGraph(local_mapper_->map_, MatchedKeyFrame_, curKeyFrame_, NonCorrectedSim3, CorrectedSim3, LoopConnections, false);
 
     update_finish_ = true;
+    SetMapUpdateFlagForTracking(true);
+
 
     bool traj_afterEss = true;
 
@@ -1879,7 +1882,21 @@ void LoopClosure::RunGlobalBundleAdjustment(uint64_t nLoopKF)
         FinishedGBA_ = true;
         RunningGBA_ = false;
         update_finish_ = true;
+        SetMapUpdateFlagForTracking(true);
+
     }
+}
+
+bool LoopClosure::GetMapUpdateFlagForTracking()
+{
+    std::unique_lock<std::mutex> lock(mMutexMapUpdateFlag);
+    return mbMapUpdateFlagForTracking;
+}
+
+void LoopClosure::SetMapUpdateFlagForTracking(bool bflag)
+{
+    std::unique_lock<std::mutex> lock(mMutexMapUpdateFlag);
+    mbMapUpdateFlagForTracking = bflag;
 }
 }
 

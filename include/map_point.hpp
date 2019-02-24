@@ -114,6 +114,10 @@ public:
     double optimal_inv_z_;
     uint64_t last_structure_optimal_;
 
+    // Variables used by local mapping
+    uint64_t mnBALocalForKF;
+    uint64_t mnFuseCandidateForKF;
+
 private:
 
     Vector3d pose_;
