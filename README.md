@@ -1,10 +1,10 @@
 ## Add loop closure
 
-![gif](https://github.com/JHzss/ssvo/blob/vio/demo/vio_2.gif)
+![gif](https://github.com/JHzss/ssvo/blob/loop_closure/demo/loop_upload.gif)
 
 [video(youtube)](https://www.youtube.com/watch?v=X2_8uConcNM)
 
-[video(youku)](https://v.youku.com/v_show/id_XNDA5NjgyNTgzNg==.html?spm=a2h3j.8428770.3416059.1)
+[video(youku)](https://v.youku.com/v_show/id_XNDA5Njg0NDc0OA==.html?spm=a2h3j.8428770.3416059.1)
 
 ---
 # ssvo
