@@ -1,8 +1,8 @@
 ## Add loop closure
 
-!.[gif](https://github.com/JHzss/ssvo/tree/loop_closure/demo/vio.gif)
+![gif](https://github.com/JHzss/ssvo/tree/loop_closure/demo/vio_2.gif)
 
-[video](https://youtu.be/X2_8uConcNM).
+[video](https://youtu.be/X2_8uConcNM)
 ---
 # ssvo
 
