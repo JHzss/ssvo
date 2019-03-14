@@ -548,6 +548,15 @@ void KeyFrame::ComputePreInt(void)
 //                cerr<<std::fixed<<std::setprecision(3)<<"dt = "<<dt<<", this vs next time: "<<imu._t<<" vs "<<nextt<<endl;
 //                std::cerr.unsetf ( std::ios::showbase );                // deactivate showbase
 //            }
+
+//            Matrix3d dR = mIMUPreInt.getDeltaR();
+//            Vector3d dP = mIMUPreInt.getDeltaP();
+//            Vector3d dV = mIMUPreInt.getDeltaV();
+//            double dt_ = mIMUPreInt.getDeltaTime();
+
+//            std::cout<<id_<<"dp: "<<dP.transpose()<<std::endl;
+//            std::cout<<id_<<"dv: "<<dV.transpose()<<std::endl;
+//            std::cout<<id_<<"dt: "<<dt_<<std::endl;
         }
     }
     // Debug log

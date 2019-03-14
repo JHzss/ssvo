@@ -104,11 +104,11 @@ void Frame::setPose(const SE3d& pose)
     Tcw_ = Twc_.inverse();
     Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
 
-    SE3d Tcb(ImuConfigParam::GetEigTbc());
+    SE3d Tcb(ImuConfigParam::GetEigTcb());
     Twb_ = Twc_ * Tcb;
     Tbw_ = Twb_.inverse();
 
-    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
+//    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
 }
 
 void Frame::setPose(const Matrix3d& R, const Vector3d& t)
@@ -118,11 +118,11 @@ void Frame::setPose(const Matrix3d& R, const Vector3d& t)
     Tcw_ = Twc_.inverse();
     Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
 
-    SE3d Tcb(ImuConfigParam::GetEigTbc());
+    SE3d Tcb(ImuConfigParam::GetEigTcb());
     Twb_ = Twc_ * Tcb;
     Tbw_ = Twb_.inverse();
 
-    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
+//    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
 
 }
 
@@ -133,11 +133,11 @@ void Frame::setTcw(const SE3d &Tcw)
     Twc_ = Tcw_.inverse();
     Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
 
-    SE3d Tcb(ImuConfigParam::GetEigTbc());
+    SE3d Tcb(ImuConfigParam::GetEigTcb());
     Twb_ = Twc_ * Tcb;
     Tbw_ = Twb_.inverse();
 
-    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
+//    UpdateNavStatePRFromTcw(Tcw_,Tcb.inverse());
 }
 
 void Frame::setTwb(const SE3d &Twb)
@@ -146,12 +146,12 @@ void Frame::setTwb(const SE3d &Twb)
 
     Twb_ = Twb;
     Tbw_ = Twb_.inverse();
-    SE3d Tcb(ImuConfigParam::GetEigTbc());
+    SE3d Tcb(ImuConfigParam::GetEigTcb());
     Tcw_ = Tcb * Tbw_;
     Twc_ = Tcw_.inverse();
     Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
 
-    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
+//    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
 }
 
 bool Frame::isVisiable(const Vector3d &xyz_w, const int border)
@@ -413,19 +413,24 @@ void Frame::ComputeIMUPreIntSinceLastFrame(const Frame::Ptr pLastF, IMUPreintegr
 
 void Frame::UpdatePoseFromNS(const Matrix4d &Tbc)
 {
+    std::lock_guard<std::mutex> lock(mutex_pose_);
     Matrix3d Rbc = Tbc.block(0,0,3,3);
     Vector3d Pbc = Tbc.block(0,3,3,1);
 
     Matrix3d Rwb = mNavState.Get_RotMatrix();
     Vector3d Pwb = mNavState.Get_P();
-
     SE3d Twb(Rwb,Pwb);
-    setTwb(Twb);
+    Twb_ = Twb;
+    Tbw_ = Twb_.inverse();
+    SE3d Tcb(ImuConfigParam::GetEigTcb());
+    Tcw_ = Tcb * Tbw_;
+    Twc_ = Tcw_.inverse();
+    Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
+//    std::lock_guard<std::mutex> lock1(mutex_pose_);
 }
 
 void Frame::UpdateNavState(const IMUPreintegrator& imupreint, const Vector3d& gw)
 {
-//    Converter::updateNS(mNavState,imupreint,gw);
     Matrix3d dR = imupreint.getDeltaR();
     Vector3d dP = imupreint.getDeltaP();
     Vector3d dV = imupreint.getDeltaV();
@@ -436,7 +441,7 @@ void Frame::UpdateNavState(const IMUPreintegrator& imupreint, const Vector3d& gw
     Vector3d Vwbpre = mNavState.Get_V();
 
     Matrix3d Rwb = Rwbpre * dR;
-    Vector3d Pwb = Pwbpre + Vwbpre*dt + 0.5*gw*dt*dt + Rwbpre*dP;
+    Vector3d Pwb = Pwbpre + Vwbpre*dt + 0.5*gw*dt*dt   + Rwbpre*dP;
     Vector3d Vwb = Vwbpre + gw*dt + Rwbpre*dV;
 
     // Here assume that the pre-integration is re-computed after bias updated, so the bias term is ignored
@@ -476,12 +481,13 @@ void Frame::SetNavStateBiasAcc(const Vector3d &ba)
 void Frame::SetNavState(const NavState& ns)
 {
     mNavState = ns;
+
 }
 
-void Frame::UpdateNavStatePVRFromTcw(const SE3d &Tcw,const SE3d &Tbc)
+void Frame::UpdateNavStatePVRFromTcw(const SE3d &Tbc)
 {
     std::unique_lock<std::mutex> lock(mMutexNavState);
-    SE3d Twb = (Tbc*Tcw).inverse();
+    SE3d Twb = (Tbc*Tcw_).inverse();
     Matrix3d Rwb = Twb.rotationMatrix();
     Vector3d Pwb = Twb.translation();
 
@@ -492,6 +498,16 @@ void Frame::UpdateNavStatePVRFromTcw(const SE3d &Tcw,const SE3d &Tbc)
     mNavState.Set_Pos(Pwb);
     mNavState.Set_Rot(Rwb);
     mNavState.Set_Vel(Vw2);
+}
+void Frame::UpdateNavStatePRFromTcw(const SE3d &Tcw,const SE3d &Tbc)
+{
+    std::unique_lock<std::mutex> lock(mMutexNavState);
+    SE3d Twb = (Tbc*Tcw).inverse();
+    Matrix3d Rwb = Twb.rotationMatrix();
+    Vector3d Pwb = Twb.translation();
+
+    mNavState.Set_Pos(Pwb);
+    mNavState.Set_Rot(Rwb);
 }
 
 //! 从Navstate设置待优化变量的状态，即赋初值

@@ -91,6 +91,8 @@ public:
     std::mutex update_finish_mutex_;
     bool update_finish_;
 
+    uint64_t init_kfID_;
+
 private:
 
     struct Option{

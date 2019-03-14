@@ -164,8 +164,8 @@ public:
         residuals[0] = predicted_x - observed_x_;
         residuals[1] = predicted_y - observed_y_;
 
-        residuals[0] *= weight_*460;
-        residuals[1] *= weight_*460;
+        residuals[0] *= weight_;
+        residuals[1] *= weight_;
 
 //        std::cout<<"ReprojectionErrorSE3 Error: "<< residuals[0] * residuals[0] + residuals[1] * residuals[1] <<std::endl;
 
@@ -451,7 +451,8 @@ public:
         Eigen::Map< Eigen::Vector3d> p_plus(T_plus_delta_raw);
         Eigen::Map< Eigen::Vector3d> phi_plus(T_plus_delta_raw+3);
 
-        p_plus = p_raw + p_delta;
+        //todo
+        p_plus = p_raw + /*Sophus::SO3d::exp(phi_raw).matrix() * */p_delta;
 
 //        std::cout<<"p_plus: "<<p_plus.transpose()<<std::endl;
         phi_plus = (Sophus::SO3d::exp(phi_raw) * Sophus::SO3d::exp(phi_delta)).log();
@@ -746,9 +747,9 @@ public:
         const Sophus::SO3d rRij = (dRij * dR_dbg).inverse() * RiT * Rj;
         const Vector3d rPhiij = rRij.log();
 
-//        std::cout<<"rPij:"<<std::endl<<rPij<<std::endl;
-//        std::cout<<"rVij:"<<std::endl<<rVij<<std::endl;
-//        std::cout<<"rPhiij:"<<std::endl<<rPhiij<<std::endl;
+//        std::cout<<"rPij:"<<rPij.transpose()<<std::endl;
+//        std::cout<<"rVij:"<<rVij.transpose()<<std::endl;
+//        std::cout<<"rPhiij:"<<rPhiij.transpose()<<std::endl;
 
         Eigen::Map<Eigen::Matrix<double,9,1>> residual(residuals);
 
@@ -758,7 +759,7 @@ public:
 
         Eigen::Matrix<double, 9, 9> sqrt_info = Eigen::LLT<Eigen::Matrix<double, 9, 9>>(CovPRV_.inverse()).matrixL().transpose();//桥列司机分解
 
-//        std::cout<<"NavStatePRVError before： "<<residual.transpose()* residual<<std::endl;
+        std::cout<<"NavStatePRVError before： "<<residual.transpose()* residual<<"---"<<residual.transpose()*CovPRV_.inverse()* residual<<std::endl;
 
 //        std::cout<<"NavStatePRVError CovPRV_.inverse()： "<<std::endl<<CovPRV_.inverse()<<std::endl;
 
@@ -769,6 +770,8 @@ public:
         if(jacobians)
         {
             Matrix3d O3x3 = Matrix3d::Zero();       // 0_3x3
+            Matrix3d I3x3 = Matrix3d::Identity();       // 0_3x3
+
             Matrix3d RiT = Ri.matrix().transpose();          // Ri^T
             Matrix3d RjT = Rj.matrix().transpose();          // Rj^T
             Matrix3d JrInv_rPhi = Add_math::JacobianRInv(rPhiij);    // inverse right jacobian of so3 term #rPhiij#
@@ -782,8 +785,8 @@ public:
                 jacobian_r_posei.setZero();
 
 //                std::cout<<"jacobian_r_posei: "<<jacobian_r_posei<<std::endl;
-
-                jacobian_r_posei.block<3,3>(0,0) = - RiT;      //J_rP_dpi
+                // J_rPij_xxx_i for Vertex_PR_i
+                jacobian_r_posei.block<3,3>(0,0) = - /*I3x3*/RiT;      //J_rP_dpi
                 jacobian_r_posei.block<3,3>(0,3) = Sophus::SO3d::hat( RiT*(Pj-Pi-Vi*dTij-0.5*GravityVec_*dT2)  );    //J_rP_dPhi_i
                 // J_rPhiij_xxx_i for Vertex_PR_i
                 Matrix3d ExprPhiijTrans = Sophus::SO3d::exp(rPhiij).inverse().matrix();
@@ -833,7 +836,7 @@ public:
                 jacobian_r_posej.setZero();
 
                 // J_rPij_xxx_j for Vertex_PR_j
-                jacobian_r_posej.block<3,3>(0,0) = RiT;  //rP_dpj
+                jacobian_r_posej.block<3,3>(0,0) = RiT /** Rj.matrix()*/;  //rP_dpj
                 jacobian_r_posej.block<3,3>(0,3) = O3x3;    //rP_dphi_j
                 // J_rPhiij_xxx_j for Vertex_PR_j
                 jacobian_r_posej.block<3,3>(3,0) = O3x3;    //rR_dpj
@@ -848,7 +851,7 @@ public:
             if(jacobians[4])
             {
                 Eigen::Map<Eigen::Matrix<double ,9,3, Eigen::RowMajor>> jacobian_r_vj(jacobians[4]);
-                // For Vertex_V_i, J [dP;dR;dV] / dV1
+                // For Vertex_V_j, J [dP;dR;dV] / dV1
                 jacobian_r_vj.setZero();
 
                 jacobian_r_vj.block<3,3>(0,0) = O3x3;    //rP_dvj

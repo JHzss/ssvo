@@ -8,7 +8,7 @@ double ImuConfigParam::_g = 9.810;
 Eigen::Matrix4d ImuConfigParam::_EigTbc = Eigen::Matrix4d::Identity();
 Eigen::Matrix4d ImuConfigParam::_EigTcb = Eigen::Matrix4d::Identity();
 //! 滑动窗口大小
-int ImuConfigParam::_LocalWindowSize = 10;
+int ImuConfigParam::_LocalWindowSize = 20;
 //! 相机和imu时间延迟
 double ImuConfigParam::_ImageDelayToIMU = 0;
 //! acc=acc*9.8, if below is 1
@@ -16,7 +16,7 @@ bool ImuConfigParam::_bAccMultiply9p8 = false;
 //! Path to save tmp files/results
 std::string ImuConfigParam::_tmpFilePath = "/home/jh/ssvo_imu";
 //! imu 相机初始化时间
-double ImuConfigParam::_nVINSInitTime = 15;
+double ImuConfigParam::_nVINSInitTime = 15.0;
 //! 是否实时
 bool ImuConfigParam::_bRealTime = true;
 

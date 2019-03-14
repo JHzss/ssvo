@@ -442,9 +442,10 @@ bool System::createNewKeyFrame()
     double dist2 = 0.01 * (T_cur_from_ref.rotationMatrix() - Matrix3d::Identity()).norm();
 
     double depth_th = 0.01;
-    if(!mapper_->GetVINSInited())
+    bool ifvi = true;
+    if(!mapper_->GetVINSInited()&& ifvi)
     {
-        depth_th /= 2;
+        depth_th /= 5;
     }
 
     if(dist1+dist2  < depth_th * median_depth)
@@ -485,8 +486,15 @@ bool System::createNewKeyFrame()
     LOG(INFO) << "[System] Max overlap: " << max_overlap << " min disaprity " << disparities.front() << ", median: " << current_frame_->disparity_;
 
 //    int all_features = current_frame_->featureNumber() + current_frame_->seedNumber();
-    bool c2 = disparities.front() > options_.min_kf_disparity;
-    bool c3 = current_frame_->featureNumber() < reference_keyframe_->featureNumber() * options_.min_ref_track_rate;
+    double kf_disparity = options_.min_kf_disparity;
+    double min_ref_track_rate = options_.min_ref_track_rate;
+    if(!mapper_->GetVINSInited() && ifvi)
+    {
+        kf_disparity /= 4;
+        min_ref_track_rate = 0.9;
+    }
+    bool c2 = disparities.front() > kf_disparity;
+    bool c3 = (current_frame_->featureNumber() < reference_keyframe_->featureNumber() * min_ref_track_rate)/* ||  current_frame_->featureNumber() < 70*/;
 //    bool c4 = current_frame_->featureNumber() < reference_keyframe_->featureNumber() * 0.9;
 
     //! create new keyFrame
@@ -548,9 +556,12 @@ void System::finishFrame()
         if(STATUS_INITAL_SUCCEED == status_)
             stage_ = STAGE_NORMAL_FRAME;
         else if(STATUS_INITAL_RESET == status_)
+        {
             initializer_->reset();
+            mvIMUSinceLastKF.clear();
 
-        mvIMUSinceLastKF.clear();
+        }
+
         initializer_->drowOpticalFlow(image_show);
     }
     else if(STAGE_RELOCALIZING == stage_)
@@ -645,8 +656,8 @@ void System::process(const cv::Mat &image, const double timestamp, const std::ve
     //构造帧，保存imu数据
     current_frame_ = Frame::create(gray, timestamp, camera_,vimu);
 
-    if(last_frame_)
-        current_frame_->SetInitialNavStateAndBias(last_frame_->GetNavState());
+//    if(last_frame_)
+//        current_frame_->SetInitialNavStateAndBias(last_frame_->GetNavState());
 
     double t1 = (double)cv::getTickCount();
     LOG(WARNING) << "[System] Frame " << current_frame_->id_ << " create time: " << (t1-t0)/cv::getTickFrequency();
@@ -681,6 +692,7 @@ void System::process(const cv::Mat &image, const double timestamp, const std::ve
 
 System::Status System::trackingVIO()
 {
+    std::cout<<"7"<<std::endl;
     LOG(WARNING)<<"[SYSTEM] tracking()"<<std::endl;
 
     bool bMapUpdated = false;
@@ -695,13 +707,26 @@ System::Status System::trackingVIO()
         loop_closure_->SetMapUpdateFlagForTracking(false);
     }
 
-    //! 有了bMapUpdated变量之后这个应该没什么用了
-    if(loop_closure_->update_finish_ == true || mapper_->update_finish_ == true)
+    //! 有了bMapUpdated变量之后这个应该没什么用了,位姿变化很大的情况下才有用：
+    // 1. 初始化时的尺度变化后
+    // 2. 闭环检测的时候矫正闭环后
+    // todo 3. 局部BA的时候位姿矫正比较大的时候，所以这个应该把局部BA的后面都加上
+    // 闭环的位姿优化；初始化尺度后的位姿优化；局部BA后的位姿优化
+    if(loop_closure_->update_finish_ == true || mapper_->update_finish_ == true /*|| bMapUpdated*/)
     {
         std::cout<<"VIO Fix last_frame_ pose!"<<std::endl;
         KeyFrame::Ptr ref = /*last_frame_->getRefKeyFrame()*/last_keyframe_;
         SE3d Tlr = last_frame_->Tcw()* ref->beforeUpdate_Tcw_.inverse();
         last_frame_->setTcw( Tlr * ref->Tcw() );
+        last_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));
+//        NavState navState = last_frame_->GetNavState();
+//        navState.Set_BiasAcc(last_keyframe_->GetNavState().Get_BiasAcc()+last_keyframe_->GetNavState().Get_dBias_Acc());
+//        navState.Set_BiasGyr(last_keyframe_->GetNavState().Get_BiasGyr()+last_keyframe_->GetNavState().Get_dBias_Gyr());
+//        navState.Set_DeltaBiasGyr(Vector3d::Zero());
+//        navState.Set_DeltaBiasAcc(Vector3d::Zero());
+////        navState.Set_Vel(last_keyframe_->GetNavState().Get_V());
+//        last_frame_->SetNavState(navState);
+//
         loop_closure_->update_finish_ = false;
         mapper_->update_finish_ = false;
         //test
@@ -746,27 +771,22 @@ System::Status System::trackingVIO()
         }
          */
     }
-
+    std::cout<<"8"<<std::endl;
     current_frame_->setRefKeyFrame(reference_keyframe_);
 
     //! track seeds
     depth_filter_->trackFrame(last_frame_, current_frame_);
 
+    //todo 把优化写好之后再用imu的先验知识，否则会出错
     PredictNavStateByIMU(bMapUpdated);
-
-    SE3d Tlr = current_frame_->Tcw()* last_frame_->Twc();
-    std::cout<<Tlr.rotationMatrix()<<std::endl<<std::endl;
-    std::cout<<Tlr.translation()<<std::endl;
-    std::abort();
-
 
     //! alignment by SE3 ，得到准确的位姿
     AlignSE3 align;
     sysTrace->startTimer("img_align");
-    if(bMapUpdated)
-        align.run(last_keyframe_, current_frame_, Config::alignTopLevel(), Config::alignBottomLevel(), 30, 1e-8);
-    else
-        align.run(last_frame_, current_frame_, Config::alignTopLevel(), Config::alignBottomLevel(), 30, 1e-8);
+    std::cout<<"9"<<std::endl;
+    //这个不能省略，否则之后找不到匹配点
+    align.run(last_frame_, current_frame_, Config::alignTopLevel(), Config::alignBottomLevel(), 30, 1e-8);
+    current_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));
     sysTrace->stopTimer("img_align");
 
     //! track local map
@@ -782,6 +802,10 @@ System::Status System::trackingVIO()
 
     //! motion-only BA
     sysTrace->startTimer("motion_ba");
+//    if(mapper_->GetFirstVINSInited() || bMapUpdated)
+//        Optimizer::PoseOptimization(current_frame_,last_keyframe_,mIMUPreIntInTrack,mapper_->GetGravityVec(),false);
+//    else
+//    mIMUPreIntInTrack = GetIMUPreIntSinceLastKF(current_frame_, last_keyframe_, mvIMUSinceLastKF);
     if(mapper_->GetFirstVINSInited() || bMapUpdated)
         Optimizer::PoseOptimization(current_frame_,last_keyframe_,mIMUPreIntInTrack,mapper_->GetGravityVec(),false);
     else
@@ -817,47 +841,61 @@ System::Status System::trackingVIO()
 
     return STATUS_TRACKING_GOOD;
 }
-    
-    
-    
+
 void System::PredictNavStateByIMU(bool bMapUpdated) 
 {
     LOG_ASSERT(mapper_->GetVINSInited())<<"mapper_->GetVINSInited() not, shouldn't in PredictNavStateByIMU"<<std::endl;
 
     //! 如果局部BA或全局BA导致位姿发生了跳变，那么就要跟踪关键帧来计算初始位姿了 Map updated, optimize with last KeyFrame
-//    if(mapper_->GetFirstVINSInited() || bMapUpdated)
-//    {
-//        // Compute IMU Pre-integration
-//        mIMUPreIntInTrack = GetIMUPreIntSinceLastKF(current_frame_, last_keyframe_, mvIMUSinceLastKF);
-//        Vector3d dp = mIMUPreIntInTrack.getDeltaP();
-//        Vector3d dv = mIMUPreIntInTrack.getDeltaV();
-//        Matrix3d dr = mIMUPreIntInTrack.getDeltaR();
-//
-//        double dt = mIMUPreIntInTrack.getDeltaTime();
-//
-//        Vector3d init_p = last_keyframe_->GetNavState().Get_P();
-//        Vector3d init_v = last_keyframe_->GetNavState().Get_V();
-//        Matrix3d init_r = last_keyframe_->GetNavState().Get_RotMatrix();
-//
-//
-//        // Get initial NavState&pose from Last KeyFrame
-//        current_frame_->SetInitialNavStateAndBias(last_keyframe_->GetNavState());
-//        current_frame_->UpdateNavState(mIMUPreIntInTrack,mapper_->GetGravityVec());
-//        current_frame_->UpdatePoseFromNS(ImuConfigParam::GetEigTbc());
-//
-//        Vector3d p = current_frame_->GetNavState().Get_P();
-//        Vector3d v = current_frame_->GetNavState().Get_V();
-//        Matrix3d r = current_frame_->GetNavState().Get_RotMatrix();
-//
-//    }
-//    else
-//    {
+    if(mapper_->GetFirstVINSInited() || bMapUpdated)
+    {
+        std::cout<<"PredictNavStateByIMU --- last_keyframe_"<<last_keyframe_->id_<<"-"<< last_keyframe_->frame_id_<<"---"<<current_frame_->id_<<std::endl;
+        //todo 仅适用于数据集测试，实际跑的话这个要去掉
+        LOG_ASSERT(fabs(mvIMUSinceLastKF.front()._t - last_keyframe_->timestamp_)<1e-5)
+            <<std::fixed<<std::setprecision(9)<<mvIMUSinceLastKF.front()._t<<"----"<<last_keyframe_->timestamp_<<std::endl;
         // Compute IMU Pre-integration
-        mIMUPreIntInTrack = GetIMUPreIntSinceLastFrame(current_frame_, last_frame_);
-        // Get initial pose from Last Frame
+//        std::cout<<std::fixed<<std::setprecision(9)<<mvIMUSinceLastKF.front()._t<<"----"<<last_keyframe_->timestamp_<<std::endl;
+        mIMUPreIntInTrack = GetIMUPreIntSinceLastKF(current_frame_, last_keyframe_, mvIMUSinceLastKF);
+        // Get initial NavState&pose from Last KeyFrame
+        current_frame_->SetInitialNavStateAndBias(last_keyframe_->GetNavState());
         current_frame_->UpdateNavState(mIMUPreIntInTrack,mapper_->GetGravityVec());
         current_frame_->UpdatePoseFromNS(ImuConfigParam::GetEigTbc());
-//    }
+
+        current_frame_->setPose(last_frame_->pose());
+        current_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));
+
+//        if(mapper_->GetFirstVINSInited())
+//        {
+//            current_frame_->setPose(last_frame_->pose());
+//            current_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));
+//        }
+
+//        current_frame_->setPose(last_frame_->pose());
+//        current_frame_->UpdatePoseFromNS(ImuConfigParam::GetEigTbc());
+        //test
+//        SE3d Tlr = current_frame_->Tcw()* last_keyframe_->Twc();
+//        std::cout<<Tlr.rotationMatrix()<<std::endl<<std::endl;
+//        std::cout<<Tlr.translation()<<std::endl;
+//        std::cout<<current_frame_->GetNavState().Get_V() - last_keyframe_->GetNavState().Get_V()<<std::endl;
+    }
+    else
+    {
+        std::cout<<"PredictNavStateByIMU --- last_frame_"<< last_frame_->id_ <<"---"<<current_frame_->id_<<std::endl;
+        //todo 仅适用于数据集测试，实际跑的话这个要去掉
+        LOG_ASSERT(fabs(current_frame_->mvIMUDataSinceLastFrame.front()._t - last_frame_->timestamp_)<1e-5)
+                   <<std::fixed<<std::setprecision(9)<<current_frame_->mvIMUDataSinceLastFrame.front()._t<<"----"<<last_frame_->timestamp_<<std::endl;
+        current_frame_->SetInitialNavStateAndBias(last_frame_->GetNavState());
+        mIMUPreIntInTrack = GetIMUPreIntSinceLastFrame(current_frame_, last_frame_);
+        current_frame_->UpdateNavState(mIMUPreIntInTrack,mapper_->GetGravityVec());
+        current_frame_->UpdatePoseFromNS(ImuConfigParam::GetEigTbc());
+
+        current_frame_->setPose(last_frame_->pose());
+        current_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));
+//        current_frame_->setPose(last_frame_->pose());
+//        SE3d Tlr = current_frame_->Tcw()* last_frame_->Twc();
+//        std::cout<<Tlr.rotationMatrix()<<std::endl<<std::endl;
+//        std::cout<<Tlr.translation()<<std::endl;
+    }
 }
 
 IMUPreintegrator System::GetIMUPreIntSinceLastKF(Frame::Ptr pCurF, KeyFrame::Ptr pLastKF, const std::vector<IMUData>& vIMUSInceLastKF)
@@ -907,6 +945,15 @@ IMUPreintegrator System::GetIMUPreIntSinceLastKF(Frame::Ptr pCurF, KeyFrame::Ptr
 //            std::cerr<<std::fixed<<std::setprecision(3)<<"dt = "<<dt<<", this vs next time: "<<imu._t<<" vs "<<nextt<<std::endl;
 //            std::cerr.unsetf ( std::ios::showbase );                // deactivate showbase
 //        }
+//        Matrix3d dR = IMUPreInt.getDeltaR();
+//        Vector3d dP = IMUPreInt.getDeltaP();
+//        Vector3d dV = IMUPreInt.getDeltaV();
+//        double dt_ = IMUPreInt.getDeltaTime();
+
+//        std::cout<<pLastKF->id_<<"dp: "<<dP.transpose()<<std::endl;
+//        std::cout<<pLastKF->id_<<"dv: "<<dV.transpose()<<std::endl;
+//        std::cout<<pLastKF->id_<<"dt: "<<dt_<<std::endl;
+//        std::cout<<std::endl;
     }
 
     return IMUPreInt;

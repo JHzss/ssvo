@@ -5,6 +5,7 @@ Image.nlevels: 4
 Image.sigma: 1.0
 
 # Fast detector
+
 FastDetector.grid_size: 64
 FastDetector.grid_min_size: 8
 FastDetector.fast_max_threshold: 20

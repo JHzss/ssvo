@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     const size_t N = dataset.leftImageSize();
     bool test_delay = true;
     long imuindex = 0;
-    for(size_t i = 0; i < N - 100; i++)
+    for(size_t i = 0; i < N - 80; i++)
     {
 //        cv::waitKey(0);
         const EuRocDataReader::Image image_data = dataset.leftImage(i);

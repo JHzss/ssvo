@@ -1055,6 +1055,7 @@ Vector3d Optimizer::OptimizeInitialGyroBias(const std::vector<SE3d,Eigen::aligne
 
 void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d &gw, int nIterations,const uint64_t nLoopKF, bool report, bool verbose)
 {
+
     if (pMap->KeyFramesInMap() < 2)
         return;
 
@@ -1083,26 +1084,31 @@ void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d 
     // 添加关键帧的变量
     for (const KeyFrame::Ptr &kf : vpKFs)
     {
-        std::cout<<"kf->id : "<<kf->id_<<std::endl;
-        kf->UpdateNavStatePVRFromTcw(kf->Tcw(),Tbc_);
+        //todo  NavState 中 V的状态在初始化的时候已经处理好了，所以这里就不对V进行更新，但是之后如果再用到位姿优化的话需要考虑一下。
+        kf->UpdateNavStatePRFromTcw(kf->Tcw(),Tbc_);
         kf->setOptimizationState();
         ceres::LocalParameterization* local_parameterization_pr = new ceres_slover::PRParameterization();
-//        ceres::LocalParameterization* local_parameterization_bias = new ceres_slover::BiasParameterization();
         problem.AddParameterBlock(kf->optimal_PR_.data(), 6, local_parameterization_pr);
         problem.AddParameterBlock(kf->optimal_v_.data(),3);
-        problem.AddParameterBlock(kf->optimal_detla_bias_.data(),6/*,local_parameterization_bias*/);
+        problem.AddParameterBlock(kf->optimal_detla_bias_.data(),6);
+        problem.SetParameterBlockConstant(kf->optimal_detla_bias_.data());
 
         if(kf->id_ == 0)
         {
             problem.SetParameterBlockConstant(kf->optimal_PR_.data());
-            problem.SetParameterBlockConstant(kf->optimal_detla_bias_.data());
+//            problem.SetParameterBlockConstant(kf->optimal_detla_bias_.data());
         }
+        if(kf->id_ == 1)
+        {
+            problem.SetParameterBlockConstant(kf->optimal_PR_.data());
+        }
+
     }
 
     const double thHuberNavStatePRV = sqrt(100*21.666);
     const double thHuberNavStateBias = sqrt(100*16.812);
 
-    double scale = pixel_usigma * sqrt(4);
+    double scale = sqrt(3.81) /*pixel_usigma * sqrt(4)*/;
     ceres::LossFunction* lossfunctionPRV = new ceres::HuberLoss(thHuberNavStatePRV);
     ceres::LossFunction* lossfunctionBias = new ceres::HuberLoss(thHuberNavStateBias);
     ceres::LossFunction* lossfunctionMpt = new ceres::HuberLoss(scale);
@@ -1138,6 +1144,8 @@ void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d 
     Eigen::Matrix<double,6,6> InvCovBgaRW = Eigen::Matrix<double,6,6>::Identity();
     InvCovBgaRW.topLeftCorner(3,3) = Matrix3d::Identity()/IMUData::getGyrBiasRW2();       // Gyroscope bias random walk, covariance INVERSE
     InvCovBgaRW.bottomRightCorner(3,3) = Matrix3d::Identity()/IMUData::getAccBiasRW2();   // Accelerometer bias random walk, covariance INVERSE
+
+    std::vector<ceres::ResidualBlockId> res_id;
     for (int i = 0; i < vpKFs.size()-1; ++i)
     {
         KeyFrame::Ptr pKF1 = vpKFs[i];
@@ -1167,8 +1175,11 @@ void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d 
         CovPRV.row(5).swap(CovPRV.row(8));
 
         ceres::CostFunction* costFunction = ceres_slover::NavStatePRVError::Create(CovPRV,pKF1->GetIMUPreInt(),GravityVec);
-        problem.AddResidualBlock(costFunction,lossfunctionPRV,pKF0->optimal_PR_.data(),pKF0->optimal_v_.data(),pKF0->optimal_detla_bias_.data(),
+        ceres::ResidualBlockId residualBlockId = problem.AddResidualBlock(costFunction,NULL,pKF0->optimal_PR_.data(),pKF0->optimal_v_.data(),pKF0->optimal_detla_bias_.data(),
                                  pKF1->optimal_PR_.data(),pKF1->optimal_v_.data());
+
+        res_id.push_back(residualBlockId);
+
 
 //        std::cout<<"add imu error success"<<std::endl;
 
@@ -1177,11 +1188,10 @@ void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d 
         Vector3d bg_1 = pKF1->GetNavState().Get_BiasGyr();
         Vector3d ba_1 = pKF1->GetNavState().Get_BiasAcc();
 
-        ceres::CostFunction* costFunction1 = ceres_slover::NavStateBiasError::Creat(InvCovBgaRW/pKF1->GetIMUPreInt().getDeltaTime(),
+        ceres::CostFunction* costFunction1 = ceres_slover::NavStateBiasError::Creat((InvCovBgaRW/pKF1->GetIMUPreInt().getDeltaTime()).inverse(),
                                                                                     bg_0,ba_0,bg_1,ba_1);
         problem.AddResidualBlock(costFunction1,lossfunctionBias,pKF0->optimal_detla_bias_.data(),pKF1->optimal_detla_bias_.data());
 //        std::cout<<"add bias error success"<<std::endl<<std::endl;
-
         imu_item++;
     }
     std::cout<<"Finish add imu error. sum: "<<imu_item<<std::endl;
@@ -1192,7 +1202,7 @@ void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d 
     ceres::Solver::Summary summary;
     options.linear_solver_type = ceres::DENSE_SCHUR;
     options.trust_region_strategy_type = ceres::DOGLEG;
-    options.minimizer_progress_to_stdout = report & verbose;
+    options.minimizer_progress_to_stdout = true;
 //    options.max_num_iterations = nIterations;
 //    options_.gradient_tolerance = 1e-4;
 //    options_.function_tolerance = 1e-4;
@@ -1201,8 +1211,16 @@ void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d 
     std::cout<<"========= Begin solve GlobalBundleAdjustmentNavStatePRV ==========="<<std::endl;
     ceres::Solve(options, &problem, &summary);
 
+    for(auto &item1:res_id)
+    {
+        double residual = evaluateResidual<9>(problem,item1).squaredNorm();
+        std::cout<<"residual id: "<<residual<<std::endl;
+    }
     std::cout<<"GlobalBundleAdjustmentNavStatePRV FullReport()"<<std::endl;
     std::cout<<summary.FullReport()<<std::endl;
+
+    //! Report
+//    reportInfo<2>(problem, summary, report, verbose);
 
     //todo 根据误差去除误匹配点
     for(auto kf:vpKFs)
@@ -1235,21 +1253,15 @@ void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d 
         ns_recov.Set_DeltaBiasGyr(Vector3d::Zero());
         ns_recov.Set_DeltaBiasAcc(Vector3d::Zero());
 
-//        std::cout<<"kf:"<<kf->id_<<" bg: "<<kf->GetNavState().Get_BiasGyr().transpose()<<" delta bg:"<<kf->optimal_detla_bias_.block(0,0,3,1).transpose()<<std::endl;
-//        std::cout<<"kf:"<<kf->id_<<" ba: "<<kf->GetNavState().Get_BiasAcc().transpose()<<" delta ba:"<<kf->optimal_detla_bias_.block(3,0,3,1).transpose()<<std::endl;
         kf->SetNavState(ns_recov);
-//        kf->SetNavStateBiasGyr();
-//        kf->SetNavStateBiasAcc();
-//        ns_recov.Set_DeltaBiasGyr(Vector3d::Zero());
-//        ns_recov.Set_DeltaBiasAcc(Vector3d::Zero());
 
         SE3d Twb_ = SE3d(optimal_Rwb_,optimal_Pwb_);
         SE3d Tbc_ = SE3d(Tbc);
         kf->optimal_Tcw_ = (Twb_ * Tbc_).inverse();
+        kf->setTcw(kf->optimal_Tcw_);
     }
 
-    //! Report
-//    reportInfo<2>(problem, summary, report, verbose);
+
 }
 /**
  * @brief ORB localBA的变形，只优化窗口内的关键帧，与这些关键帧有公式关系的那些关键帧fix位姿
@@ -1257,7 +1269,7 @@ void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d 
 void Optimizer::LocalBAPRVIDP(Map::Ptr pMap, const KeyFrame::Ptr pCurKF,const std::vector<KeyFrame::Ptr> &actived_keyframes, std::list<MapPoint::Ptr> &bad_mpts, int size, int min_shared_fts, const Vector3d& gw, bool report, bool verbose)
 {
     static double focus_length = MIN(pCurKF->cam_->fx(), pCurKF->cam_->fy());
-    static double pixel_usigma = Config::imagePixelSigma()/focus_length;
+    static double pixel_usigma = Config::imagePixelSigma()/*/focus_length*/;
     LOG_ASSERT(pCurKF == actived_keyframes.back())<<"pCurKF != actived_keyframes.back. check"<<std::endl;
 
     Matrix4d Tbc = ImuConfigParam::GetEigTbc();
@@ -1286,6 +1298,8 @@ void Optimizer::LocalBAPRVIDP(Map::Ptr pMap, const KeyFrame::Ptr pCurKF,const st
         std::vector<MapPoint::Ptr> mpts = kf->getMapPoints();
         for(const MapPoint::Ptr &mpt : mpts)
         {
+            if(mpt->isBad())
+                continue;
             local_mappoints.insert(mpt);
 //            mpt->mnBALocalForKF=pCurKF->id_;
         }
@@ -1299,43 +1313,51 @@ void Optimizer::LocalBAPRVIDP(Map::Ptr pMap, const KeyFrame::Ptr pCurKF,const st
             if(item.first->mnBALocalForKF == pCurKF->id_ || item.first->mnBAFixedForKF == pCurKF->id_)
                 continue;
             fixed_keyframe.insert(item.first);
+
+//            std::cout<<"fixed kf id: "<<item.first->id_<<std::endl;
             item.first->mnBAFixedForKF = pCurKF->id_;
         }
     }
-
-
-
     ceres::Problem problem;
     ceres::LocalParameterization* local_parameterization_pr = new ceres_slover::PRParameterization();
 
-    for(const KeyFrame::Ptr &kf : fixed_keyframe)
+    for(const KeyFrame::Ptr &kf : actived_keyframes)
     {
-        std::cout<<"kf->id : "<<kf->id_<<std::endl;
-        kf->UpdateNavStatePVRFromTcw(kf->Tcw(),Tbc_);
+        std::cout<<"actived kf->id : "<<kf->id_<<std::endl;
+//        kf->UpdateNavStatePVRFromTcw(Tbc_);
         kf->setOptimizationState();
         ceres::LocalParameterization* local_parameterization_pr = new ceres_slover::PRParameterization();
 //        ceres::LocalParameterization* local_parameterization_bias = new ceres_slover::BiasParameterization();
         problem.AddParameterBlock(kf->optimal_PR_.data(), 6, local_parameterization_pr);
         problem.AddParameterBlock(kf->optimal_v_.data(),3);
         problem.AddParameterBlock(kf->optimal_detla_bias_.data(),6);
+        problem.SetParameterBlockConstant(kf->optimal_detla_bias_.data());
 
-        if(kf->id_ == 0)
+
+        if(kf->id_ <= 1)
+        {
             problem.SetParameterBlockConstant(kf->optimal_PR_.data());
+        }
     }
 
-    for(const KeyFrame::Ptr &kf : actived_keyframes)
+    for(const KeyFrame::Ptr &kf : fixed_keyframe)
     {
-        std::cout<<"kf->id : "<<kf->id_<<std::endl;
-        kf->UpdateNavStatePVRFromTcw(kf->Tcw(),Tbc_);
+        std::cout<<"fixed: kf->id : "<<kf->id_<<std::endl;
+//        kf->UpdateNavStatePVRFromTcw(Tbc_);
         kf->setOptimizationState();
         ceres::LocalParameterization* local_parameterization_pr = new ceres_slover::PRParameterization();
         problem.AddParameterBlock(kf->optimal_PR_.data(), 6, local_parameterization_pr);
         problem.AddParameterBlock(kf->optimal_v_.data(),3);
         problem.AddParameterBlock(kf->optimal_detla_bias_.data(),6);
-
         problem.SetParameterBlockConstant(kf->optimal_PR_.data());
-        problem.SetParameterBlockConstant(kf->optimal_v_.data());
-        problem.SetParameterBlockConstant(kf->optimal_detla_bias_.data());
+
+        if(kf==pKFPrevLocal)
+        {
+            problem.AddParameterBlock(kf->optimal_v_.data(),3);
+            problem.AddParameterBlock(kf->optimal_detla_bias_.data(),6);
+            problem.SetParameterBlockConstant(kf->optimal_v_.data());
+            problem.SetParameterBlockConstant(kf->optimal_detla_bias_.data());
+        }
     }
 
     double scale = pixel_usigma * 2;
@@ -1395,7 +1417,7 @@ void Optimizer::LocalBAPRVIDP(Map::Ptr pMap, const KeyFrame::Ptr pCurKF,const st
         CovPRV.row(5).swap(CovPRV.row(8));
 
         ceres::CostFunction* costFunction = ceres_slover::NavStatePRVError::Create(CovPRV,pKF1->GetIMUPreInt(),GravityVec);
-        ceres::ResidualBlockId residualBlockId_prv = problem.AddResidualBlock(costFunction,lossfunctionPRV,pKF0->optimal_PR_.data(),pKF0->optimal_v_.data(),pKF0->optimal_detla_bias_.data(),
+        ceres::ResidualBlockId residualBlockId_prv = problem.AddResidualBlock(costFunction,NULL,pKF0->optimal_PR_.data(),pKF0->optimal_v_.data(),pKF0->optimal_detla_bias_.data(),
                                  pKF1->optimal_PR_.data(),pKF1->optimal_v_.data());
         res_ids_prv.push_back(residualBlockId_prv);
 
@@ -1404,7 +1426,7 @@ void Optimizer::LocalBAPRVIDP(Map::Ptr pMap, const KeyFrame::Ptr pCurKF,const st
         Vector3d bg_1 = pKF1->GetNavState().Get_BiasGyr();
         Vector3d ba_1 = pKF1->GetNavState().Get_BiasAcc();
 
-        ceres::CostFunction* costFunction1 = ceres_slover::NavStateBiasError::Creat(InvCovBgaRW/pKF1->GetIMUPreInt().getDeltaTime(),
+        ceres::CostFunction* costFunction1 = ceres_slover::NavStateBiasError::Creat((InvCovBgaRW/pKF1->GetIMUPreInt().getDeltaTime()).inverse(),
                                                                                     bg_0,ba_0,bg_1,ba_1);
         ceres::ResidualBlockId residualBlockId_bias = problem.AddResidualBlock(costFunction1,lossfunctionBias,pKF0->optimal_detla_bias_.data(),pKF1->optimal_detla_bias_.data());
         res_ids_bias.push_back(residualBlockId_bias);
@@ -1424,6 +1446,10 @@ void Optimizer::LocalBAPRVIDP(Map::Ptr pMap, const KeyFrame::Ptr pCurKF,const st
     std::cout<<summary.FullReport()<<std::endl;
 //    std::abort();
 
+        std::cout<<"res_ids_vision number:"<<res_ids_vision.size()<<std::endl;
+        std::cout<<"res_ids_prv number:"<<res_ids_prv.size()<<std::endl;
+        std::cout<<"res_ids_bias number:"<<res_ids_bias.size()<<std::endl;
+
 
     for(const KeyFrame::Ptr &kf:actived_keyframes)
     {
@@ -1436,8 +1462,10 @@ void Optimizer::LocalBAPRVIDP(Map::Ptr pMap, const KeyFrame::Ptr pCurKF,const st
         ns_recov.Set_Pos(optimal_Pwb_);
         ns_recov.Set_Rot(optimal_Rwb_);
         ns_recov.Set_Vel(kf->optimal_v_);
-        ns_recov.Set_DeltaBiasGyr(kf->optimal_detla_bias_.block(0,0,3,1));
-        ns_recov.Set_DeltaBiasAcc(kf->optimal_detla_bias_.block(3,0,3,1));
+        ns_recov.Set_BiasAcc(kf->GetNavState().Get_BiasAcc()+kf->optimal_detla_bias_.block(3,0,3,1));
+        ns_recov.Set_BiasGyr(kf->GetNavState().Get_BiasGyr()+kf->optimal_detla_bias_.block(0,0,3,1));
+        ns_recov.Set_DeltaBiasGyr(Vector3d::Zero());
+        ns_recov.Set_DeltaBiasAcc(Vector3d::Zero());
         kf->SetNavState(ns_recov);
 
         SE3d Twb_ = SE3d(optimal_Rwb_,optimal_Pwb_);
@@ -1489,7 +1517,7 @@ void Optimizer::LocalBAPRVIDP(Map::Ptr pMap, const KeyFrame::Ptr pCurKF,const st
 int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const IMUPreintegrator &imupreint, const Vector3d &gw, const bool &bComputeMarg)
 {
     const double focus_length = MIN(pFrame->cam_->fx(), pFrame->cam_->fy());
-    const double pixel_usigma = Config::imagePixelSigma()/focus_length;
+    const double pixel_usigma = Config::imagePixelSigma();
 
     Matrix4d Tbc = ImuConfigParam::GetEigTbc();
     Matrix3d Rbc = Tbc.topLeftCorner(3,3);
@@ -1498,9 +1526,10 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const 
     Vector3d GravityVec = gw;
 
     ceres::Problem problem;
-    pLastFrame->UpdateNavStatePVRFromTcw(pLastFrame->Tcw(),Tbc_);
+//    pLastFrame->UpdateNavStatePVRFromTcw(Tbc_);
     pLastFrame->setOptimizationState();
-    pFrame->UpdateNavStatePVRFromTcw(pFrame->Tcw(),Tbc_);
+    //因为经过了图像匹配的过程，所以应该是需要调整的,否则图像匹配的作用就没有了
+//    pFrame->UpdateNavStatePVRFromTcw(Tbc_);
     pFrame->setOptimizationState();
     ceres::LocalParameterization* local_parameterization_pr = new ceres_slover::PRParameterization();
     problem.AddParameterBlock(pFrame->optimal_PR_.data(), 6, local_parameterization_pr);
@@ -1509,8 +1538,15 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const 
     problem.AddParameterBlock(pLastFrame->optimal_PR_.data(), 6, local_parameterization_pr);
     problem.AddParameterBlock(pLastFrame->optimal_v_.data(),3);
     problem.AddParameterBlock(pLastFrame->optimal_detla_bias_.data(),6);
+    //todo viorb中这个是固定的
+    problem.SetParameterBlockConstant(pLastFrame->optimal_PR_.data());
+    problem.SetParameterBlockConstant(pLastFrame->optimal_v_.data());
+    problem.SetParameterBlockConstant(pLastFrame->optimal_detla_bias_.data());
 
-    static const double scale = pixel_usigma * std::sqrt(3.81);
+    problem.SetParameterBlockConstant(pFrame->optimal_detla_bias_.data());
+
+
+        static const double scale = pixel_usigma * std::sqrt(3.81);
     const double thHuberNavStatePRV = sqrt(100*21.666);
     const double thHuberNavStateBias = sqrt(100*16.812);
     const double thHuberNavStatePrior = sqrt(30.5779);
@@ -1588,14 +1624,14 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const 
     CovPRV.row(5).swap(CovPRV.row(8));
 
     ceres::CostFunction* costFunction = ceres_slover::NavStatePRVError::Create(CovPRV,imupreint,GravityVec);
-    ceres::ResidualBlockId residualBlockId_prv = problem.AddResidualBlock(costFunction,lossfunctionPRV,pLastFrame->optimal_PR_.data(),pLastFrame->optimal_v_.data(),pLastFrame->optimal_detla_bias_.data(),
+    ceres::ResidualBlockId residualBlockId_prv = problem.AddResidualBlock(costFunction,NULL,pLastFrame->optimal_PR_.data(),pLastFrame->optimal_v_.data(),pLastFrame->optimal_detla_bias_.data(),
                                                                           pFrame->optimal_PR_.data(),pFrame->optimal_v_.data());
     Vector3d bg_0 = pLastFrame->GetNavState().Get_BiasGyr();
     Vector3d ba_0 = pLastFrame->GetNavState().Get_BiasAcc();
     Vector3d bg_1 = pFrame->GetNavState().Get_BiasGyr();
     Vector3d ba_1 = pFrame->GetNavState().Get_BiasAcc();
 
-    ceres::CostFunction* costFunction1 = ceres_slover::NavStateBiasError::Creat(InvCovBgaRW/imupreint.getDeltaTime(),
+    ceres::CostFunction* costFunction1 = ceres_slover::NavStateBiasError::Creat((InvCovBgaRW/imupreint.getDeltaTime()).inverse(),
                                                                                 bg_0,ba_0,bg_1,ba_1);
     ceres::ResidualBlockId residualBlockId_bias = problem.AddResidualBlock(costFunction1,lossfunctionBias,pLastFrame->optimal_detla_bias_.data(),pFrame->optimal_detla_bias_.data());
 
@@ -1610,7 +1646,7 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const 
     std::cout<<"PoseOptimization to Last Frame FullReport()->"<<std::endl;
     std::cout<<summary.FullReport()<<std::endl;
 
-    std::abort();
+//    std::abort();
 
     bool reject = true;
     if(reject)
@@ -1621,6 +1657,10 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const 
         for(size_t i = 0; i < N; ++i)
         {
             Feature::Ptr ft = fts[i];
+
+            if(!res_ids[i])
+                continue;
+
             if(evaluateResidual<2>(problem, res_ids[i]).squaredNorm() > TH_REPJ * (1 << ft->level_))
             {
                 remove_count++;
@@ -1630,7 +1670,7 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const 
         }
 
         ceres::Solve(options, &problem, &summary);
-        std::cout<<"PoseOptimization to Last KeyFrame after remove outliners FullReport()->"<<std::endl;
+        std::cout<<"PoseOptimization to Last Frame after remove outliners FullReport()->"<<std::endl;
         std::cout<<summary.FullReport()<<std::endl;
 
     }
@@ -1643,8 +1683,10 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const 
     ns_recov.Set_Pos(optimal_Pwb_);
     ns_recov.Set_Rot(optimal_Rwb_);
     ns_recov.Set_Vel(pFrame->optimal_v_);
-    ns_recov.Set_DeltaBiasGyr(pFrame->optimal_detla_bias_.block(0,0,3,1));
-    ns_recov.Set_DeltaBiasAcc(pFrame->optimal_detla_bias_.block(3,0,3,1));
+    ns_recov.Set_BiasAcc(pFrame->GetNavState().Get_BiasAcc()+pFrame->optimal_detla_bias_.block(3,0,3,1));
+    ns_recov.Set_BiasGyr(pFrame->GetNavState().Get_BiasGyr()+pFrame->optimal_detla_bias_.block(0,0,3,1));
+    ns_recov.Set_DeltaBiasGyr(Vector3d::Zero());
+    ns_recov.Set_DeltaBiasAcc(Vector3d::Zero());
 
     pFrame->SetNavState(ns_recov);
 //    pFrame->UpdatePoseFromNS(ConfigParam::GetMatTbc());
@@ -1655,8 +1697,6 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const 
 
     //! update pose
     pFrame->setTcw(pFrame->optimal_Tcw_);
-    std::abort();
-
 
     if(bComputeMarg)
     {
@@ -1665,11 +1705,11 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const 
 
 }
 
-// 跟踪上一帧关键帧没有先验误差
+// 跟踪上一帧关键帧
 int Optimizer::PoseOptimization(Frame::Ptr pFrame, KeyFrame::Ptr pLastKF, const IMUPreintegrator &imupreint, const Vector3d &gw, const bool &bComputeMarg)
 {
     const double focus_length = MIN(pFrame->cam_->fx(), pFrame->cam_->fy());
-    const double pixel_usigma = Config::imagePixelSigma()/focus_length;
+    const double pixel_usigma = Config::imagePixelSigma();
     static const size_t OPTIMAL_MPTS = 150;
 
     Matrix4d Tbc = ImuConfigParam::GetEigTbc();
@@ -1680,10 +1720,11 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, KeyFrame::Ptr pLastKF, const 
     Vector3d GravityVec = gw;
 
     ceres::Problem problem;
-    pFrame->UpdateNavStatePVRFromTcw(pFrame->Tcw(),Tbc_);
-    pFrame->setOptimizationState();
-    pLastKF->UpdateNavStatePVRFromTcw(pLastKF->Tcw(),Tbc_);
+
+//    pLastKF->UpdateNavStatePVRFromTcw(Tbc_);
     pLastKF->setOptimizationState();
+//    pFrame->UpdateNavStatePVRFromTcw(Tbc_);
+    pFrame->setOptimizationState();
 
     ceres::LocalParameterization* local_parameterization_pr = new ceres_slover::PRParameterization();
     problem.AddParameterBlock(pFrame->optimal_PR_.data(), 6, local_parameterization_pr);
@@ -1695,11 +1736,16 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, KeyFrame::Ptr pLastKF, const 
     problem.SetParameterBlockConstant(pLastKF->optimal_PR_.data());
     problem.SetParameterBlockConstant(pLastKF->optimal_v_.data());
     problem.SetParameterBlockConstant(pLastKF->optimal_detla_bias_.data());
+//    problem.SetParameterBlockConstant(pFrame->optimal_PR_.data());
+//    problem.SetParameterBlockConstant(pFrame->optimal_detla_bias_.data());
+    problem.SetParameterBlockConstant(pFrame->optimal_detla_bias_.data());
 
-    static const double scale = pixel_usigma * std::sqrt(3.81);
-    ceres::LossFunction* lossfunctionMpt = new ceres::HuberLoss(scale);
+
+
+        static const double scale = pixel_usigma * std::sqrt(3.81);
     const double thHuberNavStatePRV = sqrt(100*21.666);
     const double thHuberNavStateBias = sqrt(100*16.812);
+    ceres::LossFunction* lossfunctionMpt = new ceres::HuberLoss(scale);
     ceres::LossFunction* lossfunctionPRV = new ceres::HuberLoss(thHuberNavStatePRV);
     ceres::LossFunction* lossfunctionBias = new ceres::HuberLoss(thHuberNavStateBias);
 
@@ -1766,14 +1812,14 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, KeyFrame::Ptr pLastKF, const 
     CovPRV.row(5).swap(CovPRV.row(8));
 
     ceres::CostFunction* costFunction = ceres_slover::NavStatePRVError::Create(CovPRV,imupreint,GravityVec);
-    ceres::ResidualBlockId residualBlockId_prv = problem.AddResidualBlock(costFunction,lossfunctionPRV,pLastKF->optimal_PR_.data(),pLastKF->optimal_v_.data(),pLastKF->optimal_detla_bias_.data(),
+    ceres::ResidualBlockId residualBlockId_prv = problem.AddResidualBlock(costFunction,NULL,pLastKF->optimal_PR_.data(),pLastKF->optimal_v_.data(),pLastKF->optimal_detla_bias_.data(),
                                                                           pFrame->optimal_PR_.data(),pFrame->optimal_v_.data());
     Vector3d bg_0 = pLastKF->GetNavState().Get_BiasGyr();
     Vector3d ba_0 = pLastKF->GetNavState().Get_BiasAcc();
     Vector3d bg_1 = pFrame->GetNavState().Get_BiasGyr();
     Vector3d ba_1 = pFrame->GetNavState().Get_BiasAcc();
 
-    ceres::CostFunction* costFunction1 = ceres_slover::NavStateBiasError::Creat(InvCovBgaRW/imupreint.getDeltaTime(),
+    ceres::CostFunction* costFunction1 = ceres_slover::NavStateBiasError::Creat((InvCovBgaRW/imupreint.getDeltaTime()).inverse(),
                                                                                 bg_0,ba_0,bg_1,ba_1);
     ceres::ResidualBlockId residualBlockId_bias = problem.AddResidualBlock(costFunction1,lossfunctionBias,pLastKF->optimal_detla_bias_.data(),pFrame->optimal_detla_bias_.data());
 
@@ -1785,8 +1831,11 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, KeyFrame::Ptr pLastKF, const 
 //    options.max_linear_solver_iterations = 20;
 
     ceres::Solve(options, &problem, &summary);
+
     std::cout<<"PoseOptimization to Last KeyFrame FullReport()->"<<std::endl;
     std::cout<<summary.FullReport()<<std::endl;
+
+        std::cout<<"CovPRV:"<<std::endl<<CovPRV<<std::endl;
 
     bool reject = true;
     if(reject)
@@ -1797,7 +1846,9 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, KeyFrame::Ptr pLastKF, const 
         for(size_t i = 0; i < N; ++i)
         {
             Feature::Ptr ft = fts[i];
-            std::cout<<"evaluateResidual:"<<evaluateResidual<2>(problem, res_ids[i]).squaredNorm()<< "---"<<TH_REPJ * (1 << ft->level_)<<std::endl;
+//            std::cout<<"evaluateResidual:"<<evaluateResidual<2>(problem, res_ids[i]).squaredNorm()<< "---"<<TH_REPJ * (1 << ft->level_)<<std::endl;
+            if(!res_ids[i])
+                continue;
             if(evaluateResidual<2>(problem, res_ids[i]).squaredNorm() > TH_REPJ * (1 << ft->level_))
             {
                 remove_count++;
@@ -1820,8 +1871,10 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, KeyFrame::Ptr pLastKF, const 
     ns_recov.Set_Pos(optimal_Pwb_);
     ns_recov.Set_Rot(optimal_Rwb_);
     ns_recov.Set_Vel(pFrame->optimal_v_);
-    ns_recov.Set_DeltaBiasGyr(pFrame->optimal_detla_bias_.block(0,0,3,1));
-    ns_recov.Set_DeltaBiasAcc(pFrame->optimal_detla_bias_.block(3,0,3,1));
+    ns_recov.Set_BiasAcc(pFrame->GetNavState().Get_BiasAcc()+pFrame->optimal_detla_bias_.block(3,0,3,1));
+    ns_recov.Set_BiasGyr(pFrame->GetNavState().Get_BiasGyr()+pFrame->optimal_detla_bias_.block(0,0,3,1));
+    ns_recov.Set_DeltaBiasGyr(Vector3d::Zero());
+    ns_recov.Set_DeltaBiasAcc(Vector3d::Zero());
 
     pFrame->SetNavState(ns_recov);
 //    pFrame->UpdatePoseFromNS(ConfigParam::GetMatTbc());
@@ -1832,14 +1885,12 @@ int Optimizer::PoseOptimization(Frame::Ptr pFrame, KeyFrame::Ptr pLastKF, const 
 
     //! update pose
     pFrame->setTcw(pFrame->optimal_Tcw_);
-    std::abort();
-
+//    std::abort();
 
     if(bComputeMarg)
     {
 
     }
-
     //! Report
 //    reportInfo<2>(problem, summary, report, verbose);
 }
