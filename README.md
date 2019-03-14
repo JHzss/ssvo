@@ -1,3 +1,12 @@
+## Add loop closure
+
+![gif](https://github.com/JHzss/ssvo/blob/vio/demo/vio_2.gif)
+
+[video(youtube)](https://www.youtube.com/watch?v=X2_8uConcNM)
+
+[video(youku)](https://v.youku.com/v_show/id_XNDA5NjgyNTgzNg==.html?spm=a2h3j.8428770.3416059.1)
+
+---
 # ssvo
 
 Semi-direct sparse odometry
