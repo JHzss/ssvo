@@ -1,4 +1,4 @@
-## Add loop closure
+## VI-ssvo
 
 ![gif](https://github.com/JHzss/ssvo/blob/vio/demo/vio_2.gif)
 
