@@ -53,6 +53,7 @@ LocalMapper::LocalMapper(const FastDetector::Ptr fast, bool report, bool verbose
     time_names.push_back("local_ba");
     time_names.push_back("reproj");
     time_names.push_back("dbow");
+    time_names.push_back("TryinitVIO");
 
     TimeTracing::TraceNames log_names;
     log_names.push_back("frame_id");
@@ -102,6 +103,7 @@ LocalMapper::LocalMapper(DBoW3::Vocabulary* vocabulary, DBoW3::Database* databas
     time_names.push_back("local_ba");
     time_names.push_back("reproj");
     time_names.push_back("dbow");
+    time_names.push_back("TryinitVIO");
 
     TimeTracing::TraceNames log_names;
     log_names.push_back("frame_id");
@@ -307,7 +309,9 @@ void LocalMapper::run()
                     // Try to initialize VIO, if not inited
                     if(!GetVINSInited())
                     {
+                        mapTrace->startTimer("TryinitVIO");
                         bool tmpbool = TryInitVIO();
+                        mapTrace->stopTimer("TryinitVIO");
                         SetVINSInited(tmpbool);
 //                        if(tmpbool)
 //                        {
@@ -1208,9 +1212,20 @@ void LocalMapper::VINSInitThread()
 bool LocalMapper::TryInitVIO()
 {
     LOG(WARNING)<<"[LocalMapper] TryInitVIO!"<<mpCurrentKeyFrame->id_<<std::endl;
-    if(mpCurrentKeyFrame->id_ <= mnLocalWindowSize+1)
+    if(mbFirstTry)
+    {
+        mbFirstTry = false;
+        mnStartTime = mpCurrentKeyFrame->timestamp_;
+    }
+
+    if(mpCurrentKeyFrame->id_ <= mnLocalWindowSize)
     {
         LOG(WARNING)<<"[LocalMapper] No enough kf in mnLocalWindowSize to Init."<<std::endl;
+        return false;
+    }
+
+    if(mpCurrentKeyFrame->timestamp_ - mnStartTime < ImuConfigParam::GetVINSInitTime())
+    {
         return false;
     }
     //设置待保存量的文件
@@ -1252,7 +1267,7 @@ bool LocalMapper::TryInitVIO()
 
     //! 步骤1. 先进行全局BA并等待位姿优化完成,仅仅在优化之前再进行
     if(mpCurrentKeyFrame->timestamp_ - mnStartTime >= ImuConfigParam::GetVINSInitTime())
-        Optimizer::globleBundleAdjustment(map_,10,0,false,false);
+        Optimizer::globleBundleAdjustment(map_,20,0,false,false);
 
     // 保存 finit_traj 轨迹
     finit_traj << std::fixed;
@@ -1557,7 +1572,6 @@ bool LocalMapper::TryInitVIO()
     // Then x = vt'*winv*u'*D
 
     // Then y = vt'*winv*u'*D
-    //todo LearnVIorb中用的是转置，为什么？
     Matrix<double,6,1> y = vt2.transpose() * w2inv * u2.transpose() * D;
 
 
@@ -1608,12 +1622,8 @@ bool LocalMapper::TryInitVIO()
 
     //根据时间判断是否完成初始化的过程
     bool bVIOInited = false;
-    if(mbFirstTry)
-    {
-        mbFirstTry = false;
-        mnStartTime = mpCurrentKeyFrame->timestamp_;
-    }
-    if(mpCurrentKeyFrame->id_>10 && mpCurrentKeyFrame->timestamp_ - mnStartTime >= ImuConfigParam::GetVINSInitTime())
+
+    if(mpCurrentKeyFrame->id_>mnLocalWindowSize && mpCurrentKeyFrame->timestamp_ - mnStartTime >= ImuConfigParam::GetVINSInitTime())
     {
         bVIOInited = true;
     }
@@ -1757,6 +1767,15 @@ bool LocalMapper::TryInitVIO()
                 pMP->updateScale(scale);
                 pMP->updateViewAndDepth();
             }
+
+            std::vector<Seed::Ptr> seed_fts = mpCurrentKeyFrame->getTrueSeeds();;
+            for(std::vector<Seed::Ptr>::iterator sit=seed_fts.begin(), send=seed_fts.end(); sit!=send; sit++)
+            {
+                Seed::Ptr pSeed = (*sit);
+                pSeed->updateScale(scale);
+            }
+
+
             std::cout<<std::endl<<"... Map scale updated ..."<<std::endl<<std::endl;
             KeyFrame::Ptr pNewestKF = vScaleGravityKF.back();
 

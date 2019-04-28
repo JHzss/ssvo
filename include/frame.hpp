@@ -80,6 +80,8 @@ public:
 
     std::vector<Feature::Ptr> getSeeds();
 
+    std::vector<Seed::Ptr> getTrueSeeds();
+
     bool addSeed(const Feature::Ptr &ft);
 
     bool removeSeed(const Seed::Ptr &seed);

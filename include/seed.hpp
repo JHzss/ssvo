@@ -36,6 +36,7 @@ public:
     double getInvDepth();
     double getVariance();
     double getInfoWeight();
+    void updateScale(double &scale);
 
     inline static Ptr create(const std::shared_ptr<KeyFrame> &kf, const Vector2d &px, const Vector3d &fn, const int level, double depth_mean, double depth_min)
     {return Ptr(new Seed(kf, px, fn, level, depth_mean, depth_min));}

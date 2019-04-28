@@ -623,6 +623,8 @@ void System::saveTrajectoryTUM(const std::string &file_name)
     for(auto kf:kfs)
     {
         Sophus::SE3d frame_pose = kf->pose();//(*reference_keyframe_ptr)->Twc() * (*frame_pose_ptr);
+
+        frame_pose = frame_pose * SE3d(ImuConfigParam::GetEigTcb());
         Vector3d t = frame_pose.translation();
         Quaterniond q = frame_pose.unit_quaternion();
 
@@ -692,8 +694,7 @@ void System::process(const cv::Mat &image, const double timestamp, const std::ve
 
 System::Status System::trackingVIO()
 {
-    std::cout<<"7"<<std::endl;
-    LOG(WARNING)<<"[SYSTEM] tracking()"<<std::endl;
+    LOG(WARNING)<<"[SYSTEM] trackingVIO()"<<std::endl;
 
     bool bMapUpdated = false;
     if(mapper_->GetMapUpdateFlagForTracking())
@@ -771,19 +772,15 @@ System::Status System::trackingVIO()
         }
          */
     }
-    std::cout<<"8"<<std::endl;
     current_frame_->setRefKeyFrame(reference_keyframe_);
 
     //! track seeds
     depth_filter_->trackFrame(last_frame_, current_frame_);
-
+    sysTrace->startTimer("img_align");
     //todo 把优化写好之后再用imu的先验知识，否则会出错
     PredictNavStateByIMU(bMapUpdated);
-
     //! alignment by SE3 ，得到准确的位姿
     AlignSE3 align;
-    sysTrace->startTimer("img_align");
-    std::cout<<"9"<<std::endl;
     //这个不能省略，否则之后找不到匹配点
     align.run(last_frame_, current_frame_, Config::alignTopLevel(), Config::alignBottomLevel(), 30, 1e-8);
     current_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));

@@ -78,7 +78,7 @@ find_package(fast REQUIRED)
 include_directories(${fast_INCLUDE_DIR})
 
 # OpenCV
-set(OpenCV_DIR /home/jh/opencv-3.2.0/build)
+#set(OpenCV_DIR /home/jh/opencv-3.2.0/build)
 find_package(OpenCV 3.1.0 REQUIRED)
 if(OpenCV_FOUND)
     message("-- Found OpenCV ${OpenCV_VERSION} in ${OpenCV_INCLUDE_DIRS}")
@@ -92,7 +92,7 @@ find_package(Eigen 3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Sophus
-set(Sophus_DIR /home/jh/Sophus/build)
+#set(Sophus_DIR /home/jh/Sophus/build)
 FIND_PACKAGE(Sophus REQUIRED)
 include_directories(${Sophus_INCLUDE_DIRS})
 

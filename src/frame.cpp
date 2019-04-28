@@ -268,6 +268,17 @@ std::vector<Feature::Ptr> Frame::getSeeds()
     return fts;
 }
 
+std::vector<Seed::Ptr> Frame::getTrueSeeds()
+{
+    std::lock_guard<std::mutex> lock(mutex_seed_);
+    std::vector<Seed::Ptr> seeds;
+    seeds.reserve(seed_fts_.size());
+    for(const auto &it : seed_fts_)
+        seeds.push_back(it.first);
+
+    return seeds;
+}
+
 bool Frame::addSeed(const Feature::Ptr &ft)
 {
     LOG_ASSERT(ft->seed_ != nullptr) << " The feature is invalid with empty mappoint!";

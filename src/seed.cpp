@@ -123,4 +123,14 @@ double Seed::getInfoWeight()
     return MIN(convergence_rate * z_range/sigma2, 1.0);
 }
 
+void Seed::updateScale(double &scale)
+{
+    std::lock_guard<std::mutex> lock(mutex_seed_);
+    mu /= scale;
+
+    z_range /= scale;
+
+    //todo check orb中没有这一步，需不需要加呢？看一下实验效果吧
+}
+
 }
