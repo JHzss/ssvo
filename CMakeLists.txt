@@ -23,7 +23,7 @@ endif()
 ## -----------------------
 ## Build setting Debug/Release
 ## -----------------------
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -78,7 +78,7 @@ find_package(fast REQUIRED)
 include_directories(${fast_INCLUDE_DIR})
 
 # OpenCV
-#set(OpenCV_DIR /home/jh/opencv-3.2.0/build)
+set(OpenCV_DIR /home/jh/opencv-3.2.0/build)
 find_package(OpenCV 3.1.0 REQUIRED)
 if(OpenCV_FOUND)
     message("-- Found OpenCV ${OpenCV_VERSION} in ${OpenCV_INCLUDE_DIRS}")
@@ -92,7 +92,7 @@ find_package(Eigen 3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Sophus
-#set(Sophus_DIR /home/jh/Sophus/build)
+set(Sophus_DIR /home/jh/Sophus/build)
 FIND_PACKAGE(Sophus REQUIRED)
 include_directories(${Sophus_INCLUDE_DIRS})
 
@@ -205,6 +205,10 @@ add_executable(test_sim3_solver test/test_sim3_solver.cpp src/sim3_solver.cpp)
 target_link_libraries(test_sim3_solver ${PROJECT_NAME})
 
 add_executable(test_timer test/test_timer.cpp)
+
+add_executable(test_kltTrack test/test_kltTrack.cpp)
+target_link_libraries(test_kltTrack ${PROJECT_NAME})
+
 
 if(SSVO_DBOW_ENABLE)
 add_executable(test_dbow3 test/test_dbow3.cpp)

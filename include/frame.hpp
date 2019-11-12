@@ -147,7 +147,7 @@ protected:
 
     std::unordered_map<MapPoint::Ptr, Feature::Ptr> mpt_fts_;
 
-    std::unordered_map<Seed::Ptr, Feature::Ptr> seed_fts_;
+    std::unordered_map<Seed::Ptr, Feature::Ptr> seed_fts_; //这个是通过双向光流跟踪跟踪得到的种子点
 
     ImgPyr img_pyr_;
 

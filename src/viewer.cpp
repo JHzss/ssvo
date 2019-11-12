@@ -160,6 +160,7 @@ void Viewer::run()
 
         drawCurrentImage(imageTexture, image);
 
+//        cv::imwrite("/home/jh/init.png",image);
         image_viewer.Activate();
         glColor3f(1.0,1.0,1.0);
         imageTexture.RenderToViewportFlipY();
@@ -320,12 +321,17 @@ void Viewer::drawTrackedPoints(const Frame::Ptr &frame, cv::Mat &dst)
     double font_scale = 0.5;
     for(const Feature::Ptr &ft : fts)
     {
+//        MapPoint::Ptr mpt = ft->mpt_;
+
+        double depth = (frame->Tcw()*ft->mpt_->pose()).norm();
+
         Vector2d ft_px = ft->px_;
         cv::Point2f px(ft_px[0], ft_px[1]);
-        cv::Scalar color(0, 255, 0);
+        cv::Scalar color(0,255-255*depth/2,255*depth/6);
         cv::circle(dst, px, 2, color, -1);
 
         string id_str = std::to_string((frame->Tcw()*ft->mpt_->pose()).norm());//ft->mpt_->getFoundRatio());//
+        id_str.resize(5);
         cv::putText(dst, id_str, px-cv::Point2f(1,1), font_face, font_scale, color);
     }
 

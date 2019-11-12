@@ -256,12 +256,12 @@ System::Status System::tracking()
     //todo 位姿优化后如果跟踪状态不连续这列可能需要设置一些跟踪上一个关键帧而不是上一帧，注意一下。。虽然对上一阵的位子进行了调整，但是不能确保是正确的。
     current_frame_->setRefKeyFrame(reference_keyframe_);
 
-    //! track seeds
+    //! track seeds， 双向光流跟踪，无对极几何验证
     depth_filter_->trackFrame(last_frame_, current_frame_);
 
     //! 设置先验信息
     current_frame_->setPose(last_frame_->pose());
-    //! alignment by SE3
+    //! alignment by SE3 ， 通过图像匹配计算初始pose
     AlignSE3 align;
     sysTrace->startTimer("img_align");
     align.run(last_frame_, current_frame_, Config::alignTopLevel(), Config::alignBottomLevel(), 30, 1e-8);

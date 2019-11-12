@@ -7,6 +7,7 @@
 #include "local_mapping.hpp"
 #include "config.hpp"
 #include "optimizer.hpp"
+#include "viewer.hpp"
 #ifdef WIN32
 #include <io.h>
 #else
@@ -160,10 +161,12 @@ int main(int argc, char const *argv[])
         initializer->drowOpticalFlow(klt_img);
         cv::imshow("KLTracking", klt_img);
 
+//        cv::imwrite("/home/jh/KLTracking.png",klt_img);
+
         cv::waitKey(fps);
     }
 
-    ssvo::LocalMapper::Ptr mapper = ssvo::LocalMapper::create(fps);
+    ssvo::LocalMapper::Ptr mapper = ssvo::LocalMapper::create(detector);
     std::vector<Vector3d> points;
     initializer->createInitalMap(1.0);
     mapper->createInitalMap(initializer->getReferenceFrame(), frame_cur);
@@ -171,6 +174,11 @@ int main(int argc, char const *argv[])
     KeyFrame::Ptr kf0 = mapper->map_->getKeyFrame(0);
     KeyFrame::Ptr kf1 = mapper->map_->getKeyFrame(1);
     LOG_ASSERT(kf0 != nullptr && kf1 != nullptr) << "Can not find intial keyframes in map!";
+
+    Viewer::Ptr viewer = Viewer::create(mapper->map_, cv::Size(width, height));
+
+    viewer->setCurrentFrame(kf0);
+//    viewer->run();
 
     double error = 0;
     evalueErrors(kf0, kf1, error);
