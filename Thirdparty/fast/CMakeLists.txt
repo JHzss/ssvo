@@ -52,6 +52,8 @@ INCLUDE_DIRECTORIES(include src)
 ADD_LIBRARY(${PROJECT_NAME} STATIC ${SOURCES})
 
 # Add Tests
+
+set(OpenCV_DIR /home/jh/opencv-3.2.0/build)
 IF(BUILD_TEST)
   MESSAGE("Building Fast Test")
   FIND_PACKAGE(OpenCV REQUIRED)

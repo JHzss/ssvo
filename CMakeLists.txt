@@ -77,8 +77,25 @@ list(APPEND CMAKE_MODULE_PATH  ${PROJECT_SOURCE_DIR}/Thirdparty/fast/build)
 find_package(fast REQUIRED)
 include_directories(${fast_INCLUDE_DIR})
 
+
+
+
+#catkin
+find_package(catkin REQUIRED COMPONENTS
+		roscpp
+		std_msgs
+		geometry_msgs
+		nav_msgs
+		tf
+		cv_bridge
+		camera_model
+		)
+include_directories(${catkin_INCLUDE_DIRS})
+
+catkin_package()
+
 # OpenCV
-#set(OpenCV_DIR /home/jh/opencv-3.2.0/build)
+set(OpenCV_DIR /home/jh/opencv-3.2.0/build)
 find_package(OpenCV 3.1.0 REQUIRED)
 if(OpenCV_FOUND)
     message("-- Found OpenCV ${OpenCV_VERSION} in ${OpenCV_INCLUDE_DIRS}")
@@ -92,9 +109,14 @@ find_package(Eigen 3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Sophus
-#set(Sophus_DIR /home/jh/Sophus/build)
-FIND_PACKAGE(Sophus REQUIRED)
-include_directories(${Sophus_INCLUDE_DIRS})
+set(Sophus_DIR /home/jh/Sophus/build)
+find_package(Sophus REQUIRED)
+if(Sophus_FOUND)
+	message("-- Found Sophus ${Sophus_VERSION} in ${Sophus_INCLUDE_DIRS}")
+	include_directories(${Sophus_INCLUDE_DIRS})
+else()
+	message(FATAL_ERROR "-- Can Not Found OpenCV3")
+endif()
 
 # glog
 find_package(Glog 0.3.5 REQUIRED)
@@ -124,7 +146,7 @@ include_directories(
 
 list(APPEND LINK_LIBS
     ${OpenCV_LIBS}
-    ${Sophus_LIBRARIES}
+#    ${Sophus_LIBRARIES}
     ${GLOG_LIBRARY}
     ${CERES_LIBRARIES}
     ${Pangolin_LIBRARIES}
@@ -223,3 +245,6 @@ target_link_libraries(monoVO_tum ${PROJECT_NAME})
 
 add_executable(monoVO_live demo/monoVO_live.cpp)
 target_link_libraries(monoVO_live ${PROJECT_NAME})
+
+add_executable(monoVIO_neu demo/monoVIO_neu.cpp)
+target_link_libraries(monoVIO_neu ${PROJECT_NAME}  ${catkin_LIBRARIES})

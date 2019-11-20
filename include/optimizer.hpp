@@ -770,7 +770,7 @@ public:
         if(jacobians)
         {
             Matrix3d O3x3 = Matrix3d::Zero();       // 0_3x3
-            Matrix3d I3x3 = Matrix3d::Identity();       // 0_3x3
+//            Matrix3d I3x3 = Matrix3d::Identity();       // 0_3x3
 
             Matrix3d RiT = Ri.matrix().transpose();          // Ri^T
             Matrix3d RjT = Rj.matrix().transpose();          // Rj^T

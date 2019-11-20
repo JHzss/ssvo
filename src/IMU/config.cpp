@@ -1,4 +1,6 @@
 #include "config.hpp"
+#include "imudata.hpp"
+#include <global.hpp>
 
 namespace ssvo
 {
@@ -20,7 +22,15 @@ double ImuConfigParam::_nVINSInitTime = 15.0;
 //! 是否实时
 bool ImuConfigParam::_bRealTime = true;
 
-ImuConfigParam::ImuConfigParam(std::string configfile)
+string ImuConfigParam::imu_topic_;
+
+string ImuConfigParam::image_topic_;
+
+int ImuConfigParam::imu_frequency_;
+int ImuConfigParam::image_frequency_;
+
+
+    ImuConfigParam::ImuConfigParam(std::string configfile)
 {
     cv::FileStorage fSettings(configfile, cv::FileStorage::READ);
 
@@ -41,8 +51,12 @@ ImuConfigParam::ImuConfigParam(std::string configfile)
     fSettings["bagfile"] >> _bagfile;
     std::cout<<"open rosbag: "<<_bagfile<<std::endl;
     std::cout<<std::endl;
-//    fSettings["imutopic"] >> _imuTopic;
-//    fSettings["imagetopic"] >> _imageTopic;
+    fSettings["imu_topic"] >> imu_topic_;
+    fSettings["image_topic"] >> image_topic_;
+    fSettings["imu_topic"] >> imu_topic_;
+    fSettings["image_topic"] >> image_topic_;
+    fSettings["imu_frequency"] >> imu_frequency_;
+    fSettings["image_frequency"] >> image_frequency_;
 //    std::cout<<"imu topic: "<<_imuTopic<<std::endl;
 //    std::cout<<"image topic: "<<_imageTopic<<std::endl;
 
@@ -88,6 +102,42 @@ ImuConfigParam::ImuConfigParam(std::string configfile)
         _bRealTime = (tmpBool != 0);
         std::cout<<"whether run realtime? 0/1: "<<_bRealTime<<std::endl;
     }
+
+    double gyrBiasRw = fSettings["IMU.gyrBiasRW"];
+    double accBiasRw = fSettings["IMU.accBiasRW"];
+    double gyrMeasCov = fSettings["IMU.gyrNoise"];
+    double accMeasCov = fSettings["IMU.accNoise"];
+    double frequency = fSettings["IMU.frequency"];
+
+    int gyrBiasRw_p = fSettings["IMU.gyrBiasRW_p"];
+    int accBiasRw_p = fSettings["IMU.accBiasRW_p"];
+    int gyrMeasCov_p = fSettings["IMU.gyrNoise_p"];
+    int accMeasCov_p = fSettings["IMU.accNoise_p"];
+    cout<<"/********"<<endl
+        <<"* IMU.frequency: "<<frequency<<endl
+        <<"* IMU.gyrBiasRW: "<<gyrBiasRw<<endl<<"* IMU.accBiasRW: "<<accBiasRw<<endl
+        <<"* IMU.gyrMeasCov: "<<gyrMeasCov<<endl<<"* IMU.accMeasCov: "<<accMeasCov<<endl
+        <<"* IMU.gyrBiasRW_p: "<<gyrBiasRw_p<<endl<<"* IMU.accBiasRW_p: "<<accBiasRw_p<<endl
+        <<"* IMU.gyrMeasCov_p: "<<gyrMeasCov_p<<endl<<"* IMU.accMeasCov_p: "<<accMeasCov_p<<endl
+        <<"********/"<<endl;
+
+    IMUData::_gyrBiasRw2 = gyrBiasRw * gyrBiasRw/**10*/;  //2e-12*1e3
+    IMUData::_accBiasRw2 = accBiasRw * accBiasRw/**10*/;  //4.5e-8*1e2
+
+    //MH01 *200 *1000  --- 0.039/ *1 *500 0.042
+    //MH02 *200 *10000
+    //MH03 *200 *10000
+    //MH04 *1 *10000   /  *200 *200 ---0.16 /*200 *10000 ---0.16/ *1 *1 ---0.63 / *1 *100 ---0.27
+
+    // 方差+离散->sigma_gw * sigma_gw / dt * (调参->标定的IMU不准确，可能相差数量级，因此需要加上一个参数)
+    IMUData::_gyrMeasCov = Eigen::Matrix3d::Identity() * gyrMeasCov * gyrMeasCov * frequency * gyrMeasCov_p;       // sigma_g * sigma_g / dt, ~6e-6*10
+    IMUData::_accMeasCov = Eigen::Matrix3d::Identity() * accMeasCov * accMeasCov * frequency * accMeasCov_p;       // sigma_a * sigma_a / dt, ~8e-4*10
+
+    // covariance of bias random walk
+    // 方差+离散->sigma_gw * sigma_gw * dt
+    IMUData::_gyrBiasRWCov = Eigen::Matrix3d::Identity()*IMUData::_gyrBiasRw2 / frequency * gyrBiasRw_p;     // sigma_gw * sigma_gw * dt, ~2e-12
+    IMUData::_accBiasRWCov = Eigen::Matrix3d::Identity()*IMUData::_accBiasRw2 / frequency * accBiasRw_p;     // sigma_aw * sigma_aw * dt, ~4.5e-8
+
     std::cout<<"================ END ===================="<<std::endl;
 }
 

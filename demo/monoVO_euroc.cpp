@@ -33,6 +33,14 @@ int main(int argc, char *argv[])
     const size_t N = dataset.leftImageSize();
     bool test_delay = true;
     long imuindex = 0;
+
+    /*
+     * 相机与IMU时间戳上的处理问题
+     * 1. 首先保证IMU的数据要比图像数据早
+     * 2. 将某一帧图相对应的IMU是上一帧与当前帧之间的IMU数据。上一帧时间戳<= imu时间戳<=当前帧时间戳
+     * 3. 在计算积分的时候应该是 (imu[1].时间-上一帧时间戳)*imu[1].测量 + (imu[i].时间-imu[i-1].时间)*imu[i-1].测量 + (当前帧时间戳-imu[last-1].时间)*imu[last-1].测量
+     */
+
     for(size_t i = 0; i < N ; i++)
     {
 //        cv::waitKey(0);
@@ -42,20 +50,21 @@ int main(int argc, char *argv[])
         if(image.empty())
             continue;
 
+        // 1. 保证IMU的数据要比图像数据早
         if(test_delay)
         {
             const double startimutime = vImus[0]._t;
+
+            // 忽略掉IMU测量值之前的帧
             if(startimutime <= image_data.timestamp)
-            {
                 test_delay = false;
-            }
             else
-            {
                 continue;
-            }
         }
+
         double tframe = image_data.timestamp;
 
+        // 2. 将某一帧图相对应的IMU是上一帧与当前帧之间的IMU数据。上一帧时间戳<= imu时间戳<=当前帧时间戳
         std::vector<ssvo::IMUData> vimu;
         while(1)
         {

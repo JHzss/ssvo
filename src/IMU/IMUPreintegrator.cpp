@@ -112,24 +112,6 @@ void IMUPreintegrator::update(const Eigen::Vector3d& omega, const Eigen::Vector3
     _delta_V += _delta_R*acc*dt;
     _delta_R = normalizeRotationM(_delta_R*dR);  // normalize rotation, in case of numerical error accumulation
 
-
-//    // noise covariance propagation of delta measurements
-//    // err_k+1 = A*err_k + B*err_gyro + C*err_acc
-//    Matrix3d I3x3 = Matrix3d::Identity();
-//    MatrixXd A = MatrixXd::Identity(9,9);
-//    A.block<3,3>(6,6) = dR.transpose();
-//    A.block<3,3>(3,6) = -_delta_R*skew(acc)*dt;
-//    A.block<3,3>(0,6) = -0.5*_delta_R*skew(acc)*dt2;
-//    A.block<3,3>(0,3) = I3x3*dt;
-//    MatrixXd Bg = MatrixXd::Zero(9,3);
-//    Bg.block<3,3>(6,0) = Jr*dt;
-//    MatrixXd Ca = MatrixXd::Zero(9,3);
-//    Ca.block<3,3>(3,0) = _delta_R*dt;
-//    Ca.block<3,3>(0,0) = 0.5*_delta_R*dt2;
-//    _cov_P_V_Phi = A*_cov_P_V_Phi*A.transpose() +
-//        Bg*IMUData::getGyrMeasCov*Bg.transpose() +
-//        Ca*IMUData::getAccMeasCov()*Ca.transpose();
-
     // delta time
     _delta_time += dt;
 }

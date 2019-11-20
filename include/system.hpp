@@ -90,6 +90,8 @@ private:
 
     std::thread viewer_thread_;
 
+    std::shared_ptr<std::thread> vioInit_thread_;
+
     cv::Mat rgb_;
     Frame::Ptr last_frame_;
     Frame::Ptr current_frame_;
@@ -103,7 +105,7 @@ private:
     std::list<Sophus::SE3d> frame_pose_buffer_;
     std::list<KeyFrame::Ptr> reference_keyframe_buffer_;
 
-//! imu ---------------------------------------------
+//! imu by jh---------------------------------------------
 public:
     /**
      * 1.初始化完成后清空
@@ -126,6 +128,7 @@ public:
 
     ImuConfigParam* mpParams;
     cv::Mat GrabImageMonoVI(const cv::Mat &im, const std::vector<IMUData> &vimu, const double &timestamp);
+
     // IMU Data since last KF. Append when new data is provided
     // Should be cleared in 1. initialization beginning, 2. new keyframe created.
     std::vector<IMUData> mvIMUSinceLastKF;

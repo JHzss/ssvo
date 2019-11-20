@@ -37,8 +37,11 @@ bagfile: "/home/jh/MH_01_easy.bag"
 
 #######################################
 
-imutopic: "/imu0"
-imagetopic: "/cam0/image_raw"
+imu_topic: "/imu0"
+image_topic: "/cam0/image_raw"
+
+image_frequency: 20
+imu_frequency: 200
 
 
 # Timestamp shift. Timage = Timu + image_delay
@@ -46,6 +49,18 @@ Camera.delaytoimu: 0
 
 # acc=acc*9.8, if below is 1
 IMU.multiplyG: 0
+
+IMU.accNoise: 2.0e-3
+IMU.gyrNoise: 1.7e-4
+IMU.accBiasRW: 5.0e-3
+IMU.gyrBiasRW: 2.0e-5
+IMU.frequency: 200
+
+# IMU标定额外参数加成
+IMU.accNoise_p: 1000
+IMU.gyrNoise_p: 200
+IMU.accBiasRW_p: 1
+IMU.gyrBiasRW_p: 1
 
 # Local Window size
 LocalMapping.LocalWindowSize: 20

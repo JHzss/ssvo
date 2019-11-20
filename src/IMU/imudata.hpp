@@ -2,11 +2,21 @@
 #define SSVO_IMUDATA_HPP
 
 #include <Eigen/Dense>
+#include <opencv2/opencv.hpp>
 
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 namespace ssvo
 {
+
+
+class IMAGEData
+{
+public:
+    IMAGEData(const cv::Mat& image,double timestamps);
+    cv::Mat image_;
+    double timestamps_;
+};
 
 class IMUData
 {
@@ -25,6 +35,7 @@ public:
     static Matrix3d getGyrBiasRWCov(void) {return _gyrBiasRWCov;}
     static Matrix3d getAccBiasRWCov(void) {return _accBiasRWCov;}
 
+    // 随机游走的均值
     static double _gyrBiasRw2;
     static double _accBiasRw2;
     static double getGyrBiasRW2(void) {return _gyrBiasRw2;}

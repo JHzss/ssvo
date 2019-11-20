@@ -106,7 +106,7 @@ public:
         std::string path;
     };
 
-    struct IMUData{
+    struct IMU{
         double timestamp;
         std::array<double, 3> gyro; //! w_RS_S_[x,y,z]
         std::array<double, 3> acc;  //! a_RS_S_[x,y,z]
@@ -189,7 +189,7 @@ public:
 
     const Image& rightImage(size_t idx) const { return right_.at(idx); }
 
-    const IMUData& imu(size_t idx) const { return imu_.at(idx); }
+    const IMU& imu(size_t idx) const { return imu_.at(idx); }
 
     const GroundTruthData& groundtruth(size_t idx) const { return groundtruth_.at(idx); }
 
@@ -230,11 +230,10 @@ private:
         //! config file
         std::string camera_yaml = root_path + "sensor.yaml";
 
-
         return 0;
     }
 
-    int loadIMUData(std::string path, std::vector<IMUData> &imu)
+    int loadIMUData(std::string path, std::vector<IMU> &imu)
     {
         //! csv
         std::string imu_csv = path + "data.csv";
@@ -260,7 +259,7 @@ private:
             std::istringstream(time_buffer) >> time;
             getline(string_stream, imu_buffer);
 
-            IMUData data;
+            IMU data;
             data.timestamp = time * 1e-9;
             char dot;
             std::istringstream(imu_buffer)
@@ -342,7 +341,7 @@ private:
     std::vector<GroundTruthData> groundtruth_;
 
 public:
-    std::vector<IMUData> imu_;
+    std::vector<IMU> imu_;
 };
 
 }

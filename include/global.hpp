@@ -36,6 +36,9 @@ EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Matrix4d)
 using namespace Eigen;
 using Sophus::SE3d;
 
+using std::cout;
+using std::endl;
+
 #ifndef MIN
     #define MIN(a,b)  ((a) > (b) ? (b) : (a))
 #endif

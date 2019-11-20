@@ -397,6 +397,9 @@ void LocalMapper::insertKeyFrame(const KeyFrame::Ptr &keyframe)
             Optimizer::localBundleAdjustment(keyframe, bad_mpts, options_.num_local_ba_kfs, options_.min_local_ba_connected_fts, report_, verbose_);
             SetMapUpdateFlagForTracking(true);
             mapTrace->stopTimer("local_ba");
+
+            cout<<"会到这里！！！？？？"<<endl;
+            std::abort();
         }
 
         for(const MapPoint::Ptr &mpt : bad_mpts)

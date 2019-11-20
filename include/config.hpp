@@ -73,6 +73,11 @@ public:
 
     static std::string DBoWDirectory(){return getInstance().dbow_dir_;}
 
+//    static std::string IMU_TOPIC(){return getInstance().imu_topic_;}
+//
+//    static std::string IMAGE_TOPIC(){return getInstance().image_topic_;}
+
+
 private:
     static Config& getInstance()
     {
@@ -123,6 +128,11 @@ private:
         max_local_kfs_ = (int)fs["Tracking.max_local_kfs"];
         min_quality_fts_ = (int)fs["Tracking.min_quality_fts"];
         max_quality_drop_fts_ = (int)fs["Tracking.max_quality_drop_fts"];
+
+        //! ros topic
+//        imu_topic_ = (std::string)fs["Ros.imu_topic"];
+//        image_topic_ = (std::string)fs["Ros.image_topic"];
+
 
         max_seeds_buffer_ = (int)fs["DepthFilter.max_seeds_buffer"];
         max_perprocess_kfs_ = (int)fs["DepthFilter.max_perprocess_kfs"];
@@ -211,6 +221,9 @@ private:
     //! DBoW
     std::string dbow_dir_;
 
+    //! ros topic
+    std::string imu_topic_,image_topic_;
+
 };
 
 class ImuConfigParam
@@ -222,6 +235,14 @@ public:
 
     // For good initialization (no movement at the beginning for some bag)
     double _testDiscardTime;
+
+    static string imu_topic_;
+
+    static string image_topic_;
+
+    static int image_frequency_;
+
+    static int imu_frequency_;
 
     static Eigen::Matrix4d GetEigTbc();
 

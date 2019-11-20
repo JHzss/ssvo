@@ -23,6 +23,8 @@ System::System(std::string config_file, std::string calib_flie) :
     if(AbstractCamera::Model::PINHOLE == model)
     {
         PinholeCamera::Ptr pinhole_camera = PinholeCamera::create(calib_flie);
+        //这里把子类的指针转换成基类，因为在使用中camera_的类型是不确定的，需要定义成基类的指针，同时这样也可以调用子类的函数
+        // static_pointer_cast 这里是上行转换(把派生类指针转换成基类指针)，是安全的
         camera_ = std::static_pointer_cast<AbstractCamera>(pinhole_camera);
     }
     else if(AbstractCamera::Model::ATAN == model)
@@ -48,6 +50,10 @@ System::System(std::string config_file, std::string calib_flie) :
     const int fast_max_threshold = Config::fastMaxThreshold();
     const int fast_min_threshold = Config::fastMinThreshold();
 
+    //! topic
+//    imu_topic_ = Config::IMU_TOPIC();
+//    image_topic_=Config::IMAGE_TOPIC();
+
     fast_detector_ = FastDetector::create(width, height, image_border, nlevel, grid_size, grid_min_size, fast_max_threshold, fast_min_threshold);
     feature_tracker_ = FeatureTracker::create(width, height, 20, image_border, true);
     initializer_ = Initializer::create(fast_detector_, true);
@@ -68,12 +74,17 @@ System::System(std::string config_file, std::string calib_flie) :
 #else
     mapper_ = LocalMapper::create(fast_detector_, true, false);
 #endif
+    // LocalMapper中的一个回调函数，同时需要mapper_，如果不用回调函数就需要把mapper_传给depth_filter_，比较麻烦
+    // 像这里 depth_filter_只用到了mapper_的一个函数，可以使用回调函数的方法调用，如果关系比较紧密，就需要把mapper_传给depth_filter_
     DepthFilter::Callback depth_fliter_callback = std::bind(&LocalMapper::createFeatureFromSeed, mapper_, std::placeholders::_1);
     depth_filter_ = DepthFilter::create(fast_detector_, depth_fliter_callback, true);
     viewer_ = Viewer::create(mapper_->map_, cv::Size(width, height));
 
     mapper_->startMainThread();
     depth_filter_->startMainThread();
+
+    if(ImuConfigParam::GetRealTimeFlag())
+    vioInit_thread_ = std::shared_ptr<std::thread>(new std::thread(std::bind(&LocalMapper::TryInitVIO,&mapper_)));
 
     time_ = 1000.0/fps;
 
@@ -253,7 +264,7 @@ System::Status System::tracking()
          */
     }
 
-    //todo 位姿优化后如果跟踪状态不连续这列可能需要设置一些跟踪上一个关键帧而不是上一帧，注意一下。。虽然对上一阵的位子进行了调整，但是不能确保是正确的。
+    //todo 位姿优化后如果跟踪状态不连续这列可能需要设置一些跟踪上一个关键帧而不是上一帧，注意一下。。虽然对上一帧的位姿进行了调整，但是不能确保是正确的。
     current_frame_->setRefKeyFrame(reference_keyframe_);
 
     //! track seeds
@@ -310,7 +321,7 @@ System::Status System::tracking()
 System::Status System::relocalize()
 {
     std::cout<<"Lost!!!"<<std::endl;
-    std::abort();
+//    std::abort();
 
     Corners corners_new;
     Corners corners_old;
@@ -716,7 +727,7 @@ System::Status System::trackingVIO()
     if(loop_closure_->update_finish_ == true || mapper_->update_finish_ == true /*|| bMapUpdated*/)
     {
         std::cout<<"VIO Fix last_frame_ pose!"<<std::endl;
-        KeyFrame::Ptr ref = /*last_frame_->getRefKeyFrame()*/last_keyframe_;
+        KeyFrame::Ptr ref = last_frame_->getRefKeyFrame()/*last_keyframe_*/;
         SE3d Tlr = last_frame_->Tcw()* ref->beforeUpdate_Tcw_.inverse();
         last_frame_->setTcw( Tlr * ref->Tcw() );
         last_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));
@@ -777,7 +788,6 @@ System::Status System::trackingVIO()
     //! track seeds
     depth_filter_->trackFrame(last_frame_, current_frame_);
     sysTrace->startTimer("img_align");
-    //todo 把优化写好之后再用imu的先验知识，否则会出错
     PredictNavStateByIMU(bMapUpdated);
     //! alignment by SE3 ，得到准确的位姿
     AlignSE3 align;
@@ -844,14 +854,10 @@ void System::PredictNavStateByIMU(bool bMapUpdated)
     LOG_ASSERT(mapper_->GetVINSInited())<<"mapper_->GetVINSInited() not, shouldn't in PredictNavStateByIMU"<<std::endl;
 
     //! 如果局部BA或全局BA导致位姿发生了跳变，那么就要跟踪关键帧来计算初始位姿了 Map updated, optimize with last KeyFrame
-    if(mapper_->GetFirstVINSInited() || bMapUpdated)
+    if(0/*mapper_->GetFirstVINSInited() || bMapUpdated*/)
     {
         std::cout<<"PredictNavStateByIMU --- last_keyframe_"<<last_keyframe_->id_<<"-"<< last_keyframe_->frame_id_<<"---"<<current_frame_->id_<<std::endl;
-        //todo 仅适用于数据集测试，实际跑的话这个要去掉
-        LOG_ASSERT(fabs(mvIMUSinceLastKF.front()._t - last_keyframe_->timestamp_)<1e-5)
-            <<std::fixed<<std::setprecision(9)<<mvIMUSinceLastKF.front()._t<<"----"<<last_keyframe_->timestamp_<<std::endl;
         // Compute IMU Pre-integration
-//        std::cout<<std::fixed<<std::setprecision(9)<<mvIMUSinceLastKF.front()._t<<"----"<<last_keyframe_->timestamp_<<std::endl;
         mIMUPreIntInTrack = GetIMUPreIntSinceLastKF(current_frame_, last_keyframe_, mvIMUSinceLastKF);
         // Get initial NavState&pose from Last KeyFrame
         current_frame_->SetInitialNavStateAndBias(last_keyframe_->GetNavState());
@@ -878,9 +884,7 @@ void System::PredictNavStateByIMU(bool bMapUpdated)
     else
     {
         std::cout<<"PredictNavStateByIMU --- last_frame_"<< last_frame_->id_ <<"---"<<current_frame_->id_<<std::endl;
-        //todo 仅适用于数据集测试，实际跑的话这个要去掉
-        LOG_ASSERT(fabs(current_frame_->mvIMUDataSinceLastFrame.front()._t - last_frame_->timestamp_)<1e-5)
-                   <<std::fixed<<std::setprecision(9)<<current_frame_->mvIMUDataSinceLastFrame.front()._t<<"----"<<last_frame_->timestamp_<<std::endl;
+
         current_frame_->SetInitialNavStateAndBias(last_frame_->GetNavState());
         mIMUPreIntInTrack = GetIMUPreIntSinceLastFrame(current_frame_, last_frame_);
         current_frame_->UpdateNavState(mIMUPreIntInTrack,mapper_->GetGravityVec());
@@ -905,21 +909,17 @@ IMUPreintegrator System::GetIMUPreIntSinceLastKF(Frame::Ptr pCurF, KeyFrame::Ptr
     Vector3d ba = pLastKF->GetNavState().Get_BiasAcc();
 
     // remember to consider the gap between the last KF and the first IMU
+    // 处理第一个IMUS数据与图像帧之间的gap
     {
         const IMUData& imu = vIMUSInceLastKF.front();
         double dt = imu._t - pLastKF->timestamp_;
         LOG_ASSERT(dt>-1e-5)<<"dt is '-', please check";
 
         IMUPreInt.update(imu._g - bg, imu._a - ba, dt);
-
-        // Test log
-//        if(dt < 0)
-//        {
-//            std::cerr<<std::fixed<<std::setprecision(3)<<"dt = "<<dt<<", this KF vs last imu time: "<<pLastKF->timestamp_<<" vs "<<imu._t<<std::endl;
-//            std::cerr.unsetf ( std::ios::showbase );                // deactivate showbase
-//        }
     }
+
     // integrate each imu
+    //遍历积分imu
     for(size_t i=0; i<vIMUSInceLastKF.size(); i++)
     {
         const IMUData& imu = vIMUSInceLastKF[i];

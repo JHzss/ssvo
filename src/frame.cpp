@@ -411,14 +411,6 @@ void Frame::ComputeIMUPreIntSinceLastFrame(const Frame::Ptr pLastF, IMUPreintegr
         // update pre-integrator
         IMUPreInt.update(imu._g - bg, imu._a - ba, dt);
 
-        // Test log
-
-//        if(dt <= -1e-6)
-//        {
-//            LOG_ASSERT()
-//            std::cerr<<std::fixed<<std::setprecision(3)<<"dt = "<<dt<<", this vs next time: "<<imu._t<<" vs "<<nextt<<std::endl;
-//            std::cerr.unsetf ( std::ios::showbase );                // deactivate showbase
-//        }
     }
 }
 
@@ -452,7 +444,7 @@ void Frame::UpdateNavState(const IMUPreintegrator& imupreint, const Vector3d& gw
     Vector3d Vwbpre = mNavState.Get_V();
 
     Matrix3d Rwb = Rwbpre * dR;
-    Vector3d Pwb = Pwbpre + Vwbpre*dt + 0.5*gw*dt*dt   + Rwbpre*dP;
+    Vector3d Pwb = Pwbpre + Vwbpre*dt + 0.5*gw*dt*dt + Rwbpre*dP;
     Vector3d Vwb = Vwbpre + gw*dt + Rwbpre*dV;
 
     // Here assume that the pre-integration is re-computed after bias updated, so the bias term is ignored

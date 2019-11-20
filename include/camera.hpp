@@ -62,6 +62,8 @@ public:
 
     inline const Model model() const { return model_; }
 
+    // 一旦调用了基类的下面的几个函数，就会报错，因为不应该被调用的，也可以设置成纯虚函数
+
     virtual Vector3d lift(const Vector2d& px) const;
 
     virtual Vector3d lift(double x, double y) const;
