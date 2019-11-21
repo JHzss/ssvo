@@ -124,13 +124,22 @@ void main_loop(const string& config_file, const string& calib_file )
 int main(int argc, char *argv[])
 {
     google::InitGoogleLogging(argv[0]);
-    LOG_ASSERT(argc == 4) << "\n Usage : ./monoVO_live config_file calib_file imu_config_file";
+//    LOG_ASSERT(argc == 4) << "\n Usage : ./monoVO_live config_file calib_file imu_config_file";
 
     ros::init(argc,argv,"ssvio");
     ros::NodeHandle n("~");
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
-    ssvo::ImuConfigParam imuConfigParam(argv[3]);
+    string config_file,calib_file,imu_config_file;
+    if(!n.getParam("config_file",config_file))
+        ROS_ERROR_STREAM("Failed to load " << "config_file");
+    if(!n.getParam("calib_file",calib_file))
+        ROS_ERROR_STREAM("Failed to load " << "calib_file");
+    if(!n.getParam("imu_config_file",imu_config_file))
+        ROS_ERROR_STREAM("Failed to load " << "imu_config_file");
+
+
+    ssvo::ImuConfigParam imuConfigParam(imu_config_file);
 
     cout<<"ImuConfigParam::imu_topic_: "<<ImuConfigParam::imu_topic_<<endl;
     cout<<"ImuConfigParam::image_topic_: "<<ImuConfigParam::image_topic_<<endl;
@@ -139,7 +148,7 @@ int main(int argc, char *argv[])
     ros::Subscriber sub_imu = n.subscribe(ImuConfigParam::imu_topic_,2000,imu_callback);
     ros::Subscriber sub_image = n.subscribe(ImuConfigParam::image_topic_,2000,image_callback);
 
-    std::thread track_thread = std::thread(main_loop,argv[1],argv[2]);
+    std::thread track_thread = std::thread(main_loop,config_file,calib_file);
 
     ros::spin();
 
