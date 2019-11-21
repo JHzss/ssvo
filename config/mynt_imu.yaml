@@ -1,0 +1,73 @@
+%YAML:1.0
+
+# 1: realtime, 0: non-realtime
+test.RealTime: 0
+# Time for visual-inertial initialization
+#MH_01 10~11  6.0s
+#MH_02 10.0
+#MH_03 10.0
+#MH_04 3.0
+test.VINSInitTime: 10.0
+
+# Modify test.InitVIOTmpPath and bagfile to the correct path
+# Path to save tmp files/results
+test.InitVIOTmpPath: "/home/jh/temp/ssvo/"
+
+## For good initialization (no movement at the beginning for some bag),需要设置，避免刚开始不动的那一段，后续需要移除这个参数
+test.DiscardTime: 0
+#bagfile: "/home/jp/TimeV1_01_easy.bag"
+## bad: V1_03_difficult(wrong), V2_03_difficult(lost)
+## not so good(cant close loop without loopclosure): V1_02_medium, V2_02_medium, MH_05_difficult
+## good: V1_01_easy, V2_01_easy, MH_01_easy, MH_02_easy, MH_03_medium, MH_04_difficult
+
+#test.DiscardTime: 18
+#bagfile: "/media/jp/JingpangPassport/3dataset/EuRoC-VIO/un_restamped/MH_03_medium.bag"
+
+#bagfile: "/media/jp/JingpangPassport/3dataset/EuRoC-VIO/un_restamped/MH_04_difficult.bag"
+#bagfile: "/media/jp/JingpangPassport/3dataset/EuRoC-VIO/un_restamped/MH_05_difficult.bag"
+#bagfile: "/media/jp/JingpangPassport/3dataset/EuRoC-VIO/un_restamped/MH_02_easy.bag"
+bagfile: "/home/jh/MH_01_easy.bag"
+#bagfile: "/media/jp/JingpangPassport/3dataset/EuRoC-VIO/un_restamped/V2_02_medium.bag"
+#bagfile: "/media/jp/JingpangPassport/3dataset/EuRoC-VIO/un_restamped/V2_01_easy.bag"
+#bagfile: "/media/jp/JingpangPassport/3dataset/EuRoC-VIO/un_restamped/V1_02_medium.bag"
+#bagfile: "/media/jp/JingpangPassport/3dataset/EuRoC-VIO/un_restamped/V1_01_easy.bag"
+
+#bagfile: "/media/jp/JingpangPassport/3dataset/EuRoC-VIO/un_restamped/V1_03_difficult.bag"
+#bagfile: "/media/jp/JingpangPassport/3dataset/EuRoC-VIO/un_restamped/V2_03_difficult.bag"
+
+#######################################
+
+imu_topic: "/mynteye/imu/data_raw"
+image_topic: "/mynteye/left/image_mono"
+
+image_frequency: 30
+imu_frequency: 200
+
+
+# Timestamp shift. Timage = Timu + image_delay
+Camera.delaytoimu: 0
+
+# acc=acc*9.8, if below is 1
+IMU.multiplyG: 0
+
+IMU.accNoise: 2.0e-3
+IMU.gyrNoise: 1.7e-4
+IMU.accBiasRW: 5.0e-3
+IMU.gyrBiasRW: 2.0e-5
+IMU.frequency: 200
+
+# IMU标定额外参数加成
+IMU.accNoise_p: 1000
+IMU.gyrNoise_p: 200
+IMU.accBiasRW_p: 1
+IMU.gyrBiasRW_p: 1
+
+# Local Window size
+LocalMapping.LocalWindowSize: 20
+
+# camera-imu frame transformation, Pi = Tic * Pc
+Camera.Tbc:
+ [1.0, 0.0, 0.0, -0.048899999,
+  0.0, -1.0, 0.0, 0.00185,
+  0.0, 0.0, -1.0, -0.00533999,
+  0.0, 0.0, 0.0, 1.0]

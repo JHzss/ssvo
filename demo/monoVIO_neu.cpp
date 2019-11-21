@@ -72,7 +72,7 @@ std::vector<Measurement> getMeasurements()
         {
             IMUs.emplace_back(vImus.front());
 
-            cout<<std::fixed<<std::setprecision(6)<<img_msg.timestamps_<<"----"<<vImus.front()._t<<endl;
+//            cout<<std::fixed<<std::setprecision(6)<<img_msg.timestamps_<<"----"<<vImus.front()._t<<endl;
             if((img_msg.timestamps_-vImus.front()._t)>1e-6)
                 vImus.pop_front();
             else

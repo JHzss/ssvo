@@ -83,10 +83,11 @@ System::System(std::string config_file, std::string calib_flie) :
     mapper_->startMainThread();
     depth_filter_->startMainThread();
 
-    if(ImuConfigParam::GetRealTimeFlag())
-    vioInit_thread_ = std::shared_ptr<std::thread>(new std::thread(std::bind(&LocalMapper::TryInitVIO,&mapper_)));
+//    if(ImuConfigParam::GetRealTimeFlag())
+//        vioInit_thread_ = std::shared_ptr<std::thread>(new std::thread(std::bind(&LocalMapper::TryInitVIO,&mapper_)));
 
     time_ = 1000.0/fps;
+
 
     options_.min_kf_disparity = /*50*/100;//MIN(Config::imageHeight(), Config::imageWidth())/5;
     options_.min_ref_track_rate = /*0.9*/0.7;
@@ -854,7 +855,7 @@ void System::PredictNavStateByIMU(bool bMapUpdated)
     LOG_ASSERT(mapper_->GetVINSInited())<<"mapper_->GetVINSInited() not, shouldn't in PredictNavStateByIMU"<<std::endl;
 
     //! 如果局部BA或全局BA导致位姿发生了跳变，那么就要跟踪关键帧来计算初始位姿了 Map updated, optimize with last KeyFrame
-    if(0/*mapper_->GetFirstVINSInited() || bMapUpdated*/)
+    if(mapper_->GetFirstVINSInited() || bMapUpdated)
     {
         std::cout<<"PredictNavStateByIMU --- last_keyframe_"<<last_keyframe_->id_<<"-"<< last_keyframe_->frame_id_<<"---"<<current_frame_->id_<<std::endl;
         // Compute IMU Pre-integration

@@ -1,0 +1,19 @@
+%YAML:1.0
+
+# for uEye camera, UI122xLE-M-GL
+
+# Camera calibration and distortion parameters
+Camera.model: "pinhole" # "pinhole" or "atan"
+Camera.fps: 30.0
+#Camera.resolution: [1280, 720]
+#Camera.intrinsics: [1034.62426757812500000, 1035.57336425781250000, 643.60870361328125000, 356.19915771484375000] #fu, fv, cu, cv
+#Camera.distortion_coefficients: [0.01968765258789062, -0.02486419677734375, -0.00041961669921875, -0.00047683715820312]
+Camera.resolution: [640, 480]
+Camera.intrinsics: [516.553, 516.58856201171875000, 323.97888183593750000, 236.40682983398437500] #fu, fv, cu, cv
+Camera.distortion_coefficients: [0.02363967895507812, -0.02799224853515625, -0.00076675415039062, 0.00044631958007812]
+
+# Sensor extrinsics wrt. the body-frame.
+Camera.T_BC: [1.0, 0.0, 0.0, -0.048899999,
+              0.0, -1.0, 0.0, 0.00185,
+              0.0, 0.0, -1.0, -0.00533999,
+              0.0, 0.0, 0.0, 1.0]

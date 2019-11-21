@@ -176,8 +176,8 @@ void LocalMapper::createInitalMap(const Frame::Ptr &frame_ref, const Frame::Ptr 
             vimu2.push_back(imu);
     }
 
-    LOG_ASSERT(frame_ref->timestamp_ == vimu2.front()._t )<<"Wrong in first KF (imu data)"<<std::endl;
-    LOG_ASSERT(frame_cur->timestamp_ == vimu2.back()._t )<<"Wrong in first KF (imu data)"<<std::endl;
+//    LOG_ASSERT(frame_ref->timestamp_ == vimu2.front()._t )<<"Wrong in first KF (imu data)"<<std::endl;
+//    LOG_ASSERT(frame_cur->timestamp_ == vimu2.back()._t )<<"Wrong in first KF (imu data)"<<std::endl;
 
     //! create Key Frame
     KeyFrame::Ptr keyframe_ref = KeyFrame::create(frame_ref,vimu1,NULL);
@@ -1606,6 +1606,7 @@ bool LocalMapper::TryInitVIO()
            <<gwbefore[0]<<" "<<gwbefore[1]<<" "<<gwbefore[2]<<" "
            <<std::endl;
         fscale<<s_<<" "<<sstar<<" "<<std::endl;
+        cout<<"Scale: "<<s_<<" "<<sstar<<" "<<std::endl;
         fbiasa<<dbiasa_(0,0)<<" "<<dbiasa_(1,0)<<" "<<dbiasa_(2,0)<<" "<<std::endl;
 //        fcondnum<<w2(0,0)<<" "<<w2(1,0)<<" "<<w2(2,0)<<" "<<w2.at<float>(3)<<" "
 //                <<w2.at<float>(4)<<" "<<w2.at<float>(5)<<" "<<std::endl;

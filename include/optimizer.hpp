@@ -759,7 +759,7 @@ public:
 
         Eigen::Matrix<double, 9, 9> sqrt_info = Eigen::LLT<Eigen::Matrix<double, 9, 9>>(CovPRV_.inverse()).matrixL().transpose();//桥列司机分解
 
-        std::cout<<"NavStatePRVError before： "<<residual.transpose()* residual<<"---"<<residual.transpose()*CovPRV_.inverse()* residual<<std::endl;
+//        std::cout<<"NavStatePRVError before： "<<residual.transpose()* residual<<"---"<<residual.transpose()*CovPRV_.inverse()* residual<<std::endl;
 
 //        std::cout<<"NavStatePRVError CovPRV_.inverse()： "<<std::endl<<CovPRV_.inverse()<<std::endl;
 
