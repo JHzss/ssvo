@@ -569,6 +569,7 @@ void System::finishFrame()
             stage_ = STAGE_NORMAL_FRAME;
         else if(STATUS_INITAL_RESET == status_)
         {
+            // 初始化的帧变化后，需要清空mvIMUSinceLastKF
             initializer_->reset();
             mvIMUSinceLastKF.clear();
 
@@ -655,7 +656,7 @@ void System::saveTrajectoryTUM(const std::string &file_name)
 
 void System::process(const cv::Mat &image, const double timestamp, const std::vector<ssvo::IMUData> &vimu)
 {
-    //将两个关键帧之间的imu数据保存下来
+    // 将两个关键帧之间的imu数据保存下来
     mvIMUSinceLastKF.insert(mvIMUSinceLastKF.end(), vimu.begin(),vimu.end());
 
     sysTrace->startTimer("total");
@@ -669,9 +670,6 @@ void System::process(const cv::Mat &image, const double timestamp, const std::ve
 
     //构造帧，保存imu数据
     current_frame_ = Frame::create(gray, timestamp, camera_,vimu);
-
-//    if(last_frame_)
-//        current_frame_->SetInitialNavStateAndBias(last_frame_->GetNavState());
 
     double t1 = (double)cv::getTickCount();
     LOG(WARNING) << "[System] Frame " << current_frame_->id_ << " create time: " << (t1-t0)/cv::getTickFrequency();
@@ -709,10 +707,11 @@ System::Status System::trackingVIO()
     LOG(WARNING)<<"[SYSTEM] trackingVIO()"<<std::endl;
 
     bool bMapUpdated = false;
-    if(mapper_->GetMapUpdateFlagForTracking())
+    if(mapper_->GetMapUpdateFlagForTracking() || mapper_->GetFlagInitGBAFinish())
     {
         bMapUpdated = true;
         mapper_->SetMapUpdateFlagForTracking(false);
+        mapper_->SetFlagInitGBAFinish(false);
     }
     if(loop_closure_->GetMapUpdateFlagForTracking())
     {
@@ -720,18 +719,16 @@ System::Status System::trackingVIO()
         loop_closure_->SetMapUpdateFlagForTracking(false);
     }
 
-    //! 有了bMapUpdated变量之后这个应该没什么用了,位姿变化很大的情况下才有用：
-    // 1. 初始化时的尺度变化后
-    // 2. 闭环检测的时候矫正闭环后
-    // todo 3. 局部BA的时候位姿矫正比较大的时候，所以这个应该把局部BA的后面都加上
-    // 闭环的位姿优化；初始化尺度后的位姿优化；局部BA后的位姿优化
-    if(loop_closure_->update_finish_ == true || mapper_->update_finish_ == true /*|| bMapUpdated*/)
+    if(bMapUpdated)
     {
-        std::cout<<"VIO Fix last_frame_ pose!"<<std::endl;
-        KeyFrame::Ptr ref = last_frame_->getRefKeyFrame()/*last_keyframe_*/;
+        LOG(WARNING)<<"[SYSTEM] Map is updated, trackingVIO Fix last_frame_ pose!"<<std::endl;
+        //使用last_frame_->getRefKeyFrame()有一点bug，还没有找到，可能是beforeUpdate_Tcw_有些问题
+        KeyFrame::Ptr ref = /*last_frame_->getRefKeyFrame()*/last_keyframe_;
         SE3d Tlr = last_frame_->Tcw()* ref->beforeUpdate_Tcw_.inverse();
+
+        //虽然能够通过
         last_frame_->setTcw( Tlr * ref->Tcw() );
-        last_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));
+        last_frame_->UpdateNavStatePRFromTcw(last_frame_->Tcw(),SE3d(ImuConfigParam::GetEigTbc()));
 //        NavState navState = last_frame_->GetNavState();
 //        navState.Set_BiasAcc(last_keyframe_->GetNavState().Get_BiasAcc()+last_keyframe_->GetNavState().Get_dBias_Acc());
 //        navState.Set_BiasGyr(last_keyframe_->GetNavState().Get_BiasGyr()+last_keyframe_->GetNavState().Get_dBias_Gyr());
@@ -792,7 +789,7 @@ System::Status System::trackingVIO()
     PredictNavStateByIMU(bMapUpdated);
     //! alignment by SE3 ，得到准确的位姿
     AlignSE3 align;
-    //这个不能省略，否则之后找不到匹配点
+    //图像对齐，类似svo第一步 求初始pose
     align.run(last_frame_, current_frame_, Config::alignTopLevel(), Config::alignBottomLevel(), 30, 1e-8);
     current_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));
     sysTrace->stopTimer("img_align");
@@ -886,13 +883,14 @@ void System::PredictNavStateByIMU(bool bMapUpdated)
     {
         std::cout<<"PredictNavStateByIMU --- last_frame_"<< last_frame_->id_ <<"---"<<current_frame_->id_<<std::endl;
 
+        //todo last_frame_->GetNavState()需要提前更新，确认一下
         current_frame_->SetInitialNavStateAndBias(last_frame_->GetNavState());
         mIMUPreIntInTrack = GetIMUPreIntSinceLastFrame(current_frame_, last_frame_);
         current_frame_->UpdateNavState(mIMUPreIntInTrack,mapper_->GetGravityVec());
         current_frame_->UpdatePoseFromNS(ImuConfigParam::GetEigTbc());
 
-        current_frame_->setPose(last_frame_->pose());
-        current_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));
+//        current_frame_->setPose(last_frame_->pose());
+//        current_frame_->UpdateNavStatePVRFromTcw(SE3d(ImuConfigParam::GetEigTbc()));
 //        current_frame_->setPose(last_frame_->pose());
 //        SE3d Tlr = current_frame_->Tcw()* last_frame_->Twc();
 //        std::cout<<Tlr.rotationMatrix()<<std::endl<<std::endl;

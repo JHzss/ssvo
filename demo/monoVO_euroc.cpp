@@ -1,7 +1,6 @@
 #include "system.hpp"
 #include "dataset.hpp"
 #include "time_tracing.hpp"
-#include "src/IMU/imudata.hpp"
 
 using namespace ssvo;
 
@@ -12,22 +11,14 @@ int main(int argc, char *argv[])
 
     System vo(argv[1], argv[2]);
     ssvo::ImuConfigParam ImuConfigParam(argv[4]);
-
     EuRocDataReader dataset(argv[3]);
 
     std::vector<ssvo::IMUData> vImus;
 
     for(auto it:dataset.imu_)
-    {
         vImus.push_back(IMUData(it.gyro[0],it.gyro[1],it.gyro[2],it.acc[0],it.acc[1],it.acc[2],it.timestamp));
-    }
-    int nImus = vImus.size();
-    std::cout << "Imus in data: " << nImus << std::endl;
-    if(nImus<=0)
-    {
-        std::cerr << "ERROR: Failed to load imus" << std::endl;
-        return 1;
-    }
+    LOG(INFO) << "Imus in data: " << vImus.size() << std::endl;
+    LOG_ASSERT(!vImus.empty())<< "ERROR: Failed to load imus" << std::endl;
 
     ssvo::Timer<std::micro> timer;
     const size_t N = dataset.leftImageSize();
@@ -43,7 +34,6 @@ int main(int argc, char *argv[])
 
     for(size_t i = 0; i < N ; i++)
     {
-//        cv::waitKey(0);
         const EuRocDataReader::Image image_data = dataset.leftImage(i);
         LOG(INFO) << "=== Load Image " << i << ": " << image_data.path << ", time: " << std::fixed <<std::setprecision(7)<< image_data.timestamp << std::endl;
         cv::Mat image = cv::imread(image_data.path, CV_LOAD_IMAGE_UNCHANGED);
@@ -77,15 +67,8 @@ int main(int argc, char *argv[])
             imuindex++;
         }
 
-//        for(int i = 0;i<vimu.size();i++)
-//        {
-//            ssvo::IMUData imu = vimu[i];
-//            std::cout<<std::setprecision(6);
-//            std::cout<<std::fixed<<imu._t<<std::endl;
-//        }
-//        std::cout<<std::fixed<<"image: "<<image_data.timestamp<<std::endl;
-
         timer.start();
+        //todo 这个切换vo 和vio的接口还不完善，现在只能是vio
         bool use_vi = true;
         if(use_vi)
             vo.process(image, image_data.timestamp,vimu);

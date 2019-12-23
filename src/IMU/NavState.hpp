@@ -16,6 +16,7 @@ typedef Eigen::Matrix<double, 6, 1> Vector6d;
 
 
     //! 坐标系：Twb（from body to world）
+    //! 速度:世界坐标系下的量
 class NavState
 {
 public:

@@ -76,7 +76,6 @@ LocalMapper::LocalMapper(DBoW3::Vocabulary* vocabulary, DBoW3::Database* databas
         FullBAIdx_(0),update_finish_(false),loop_time_(0),mbMapUpdateFlagForTracking(false),init_kfID_(0)
 {
     mbVINSInited = false;
-    mbFirstTry = true;
     mbFirstVINSInited = false;
     mnLocalWindowSize = ImuConfigParam::GetLocalWindowSize();
     mpParams = pParams;
@@ -1214,26 +1213,34 @@ void LocalMapper::VINSInitThread()
 //! 在LocalMapper中 只要地图中的关键帧的数目足够多就进行VIO初始化
 bool LocalMapper::TryInitVIO()
 {
-    LOG(WARNING)<<"[LocalMapper] TryInitVIO!"<<mpCurrentKeyFrame->id_<<std::endl;
-    if(mbFirstTry)
+    static bool FirstTry = true;
+    static double StartTime;
+    LOG(WARNING)<<"[LocalMapper] TryInitVIO with KeyFrame "<<mpCurrentKeyFrame->id_<<" !"<<std::endl;
+    if(FirstTry)
     {
-        mbFirstTry = false;
-        mnStartTime = mpCurrentKeyFrame->timestamp_;
+        FirstTry = false;
+        StartTime = mpCurrentKeyFrame->timestamp_;
     }
 
+    /*
+     * 初始化的条件：
+     * 1. 关键帧数目大于滑窗大小
+     * 2. 足够的时间(足够的关键帧)保证收敛
+     */
     if(mpCurrentKeyFrame->id_ <= mnLocalWindowSize)
     {
-        LOG(WARNING)<<"[LocalMapper] No enough kf in mnLocalWindowSize to Init."<<std::endl;
+        LOG(WARNING)<<"[LocalMapper] No enough KeyFrame in mnLocalWindowSize to InitVIO."<<std::endl;
+        return false;
+    }
+    if(mpCurrentKeyFrame->timestamp_ - StartTime < ImuConfigParam::GetVINSInitTime())
+    {
+        LOG(WARNING)<<"[LocalMapper] No enough Time to InitVIO."<<std::endl;
         return false;
     }
 
-    if(mpCurrentKeyFrame->timestamp_ - mnStartTime < ImuConfigParam::GetVINSInitTime())
-    {
-        return false;
-    }
-    //设置待保存量的文件
+    // 设置待保存量的文件，用于检查
     static bool fopened = false;
-    static std::ofstream fgw,fscale,fbiasa,fcondnum,ftime,fbiasg,finit_traj,finit_traj_afterScale,finit_traj_afterScale_gba,finit_traj_biasa,finit_traj_biasg,finit_traj_v_before,finit_traj_v;
+    static std::ofstream fgw,fscale,fbiasa,ftime,fbiasg,finit_traj,finit_traj_afterScale,finit_traj_afterScale_gba,finit_traj_biasa,finit_traj_biasg,finit_traj_v_before,finit_traj_v;
     string tmpfilepath = ImuConfigParam::getTmpFilePath();
     if(!fopened)
     {
@@ -1241,8 +1248,6 @@ bool LocalMapper::TryInitVIO()
         fgw.open(tmpfilepath+"gw.txt");
         fscale.open(tmpfilepath+"scale.txt");
         fbiasa.open(tmpfilepath+"biasa.txt");
-        //todo 这个是啥？
-        fcondnum.open(tmpfilepath+"condnum.txt");
         ftime.open(tmpfilepath+"computetime.txt");
         fbiasg.open(tmpfilepath+"biasg.txt");
         finit_traj.open(tmpfilepath+"init_traj.txt");
@@ -1252,25 +1257,22 @@ bool LocalMapper::TryInitVIO()
         finit_traj_biasg.open(tmpfilepath+"init_traj_biasg.txt");
         finit_traj_v.open(tmpfilepath+"init_traj_v.txt");
         finit_traj_v_before.open(tmpfilepath+"finit_traj_v_before.txt");
-        if(fgw.is_open() && fscale.is_open() && fbiasa.is_open() &&
-           fcondnum.is_open() && ftime.is_open() && fbiasg.is_open())
+        if(fgw.is_open() && fscale.is_open() && fbiasa.is_open() && ftime.is_open() && fbiasg.is_open())
             fopened = true;
         else
         {
-            std::cerr<<"file open error in TryInitVIO"<<std::endl;
+            std::cerr<<"File can't be opened in TryInitVIO"<<std::endl;
             fopened = false;
         }
         fgw<<std::fixed<<std::setprecision(6);
         fscale<<std::fixed<<std::setprecision(6);
         fbiasa<<std::fixed<<std::setprecision(6);
-        fcondnum<<std::fixed<<std::setprecision(6);
         ftime<<std::fixed<<std::setprecision(6);
         fbiasg<<std::fixed<<std::setprecision(6);
     }
 
     //! 步骤1. 先进行全局BA并等待位姿优化完成,仅仅在优化之前再进行
-    if(mpCurrentKeyFrame->timestamp_ - mnStartTime >= ImuConfigParam::GetVINSInitTime())
-        Optimizer::globleBundleAdjustment(map_,20,0,false,false);
+    Optimizer::globleBundleAdjustment(map_,20,0,true,true);
 
     // 保存 finit_traj 轨迹
     finit_traj << std::fixed;
@@ -1299,7 +1301,7 @@ bool LocalMapper::TryInitVIO()
     std::vector<KeyFrame::Ptr> vScaleGravityKF = map_->getAllKeyFrames();
     std::sort(vScaleGravityKF.begin(),vScaleGravityKF.end(),[](KeyFrame::Ptr kf1,KeyFrame::Ptr kf2)->bool{ return kf1->id_<kf2->id_;});
     int N = vScaleGravityKF.size();
-    std::vector<SE3d,Eigen::aligned_allocator<SE3d>> vE_Twc;
+    std::vector<Sophus::SE3d,Eigen::aligned_allocator<Sophus::SE3d>> vE_Twc;
     std::vector<IMUPreintegrator> vIMUPreInt;
     std::vector<KeyFrameInit::Ptr> vKFInit;
 
@@ -1331,6 +1333,8 @@ bool LocalMapper::TryInitVIO()
     loss_function = new ceres::CauchyLoss(1.0);//降低外点的影响
     double X[4];
      */
+
+    //todo 重新积分的结果之后需要传给KF，如果求出加速度计bias之后还要重新积分的话就不用了
     for(int i=0;i<N;i++)
         vKFInit[i]->bg = bgest;
     for(int i=0;i<N;i++)
@@ -1339,8 +1343,8 @@ bool LocalMapper::TryInitVIO()
     //! 步骤4. 估计尺度和重力向量（'world' frame (first KF's camera frame)）,并保存初始化变量的结果
     Eigen::MatrixXd A{3*(N-2),4};
     Eigen::VectorXd B{3*(N-2)};
-
     Eigen::Matrix3d I3;
+
     A.setZero();
     B.setZero();
     I3.setIdentity();
@@ -1627,7 +1631,7 @@ bool LocalMapper::TryInitVIO()
     //根据时间判断是否完成初始化的过程
     bool bVIOInited = false;
 
-    if(mpCurrentKeyFrame->id_>mnLocalWindowSize && mpCurrentKeyFrame->timestamp_ - mnStartTime >= ImuConfigParam::GetVINSInitTime())
+    if(mpCurrentKeyFrame->id_>mnLocalWindowSize && mpCurrentKeyFrame->timestamp_ - StartTime >= ImuConfigParam::GetVINSInitTime())
     {
         bVIOInited = true;
     }
@@ -2022,6 +2026,7 @@ void LocalMapper::RunGlobalBundleAdjustment(uint64_t nLoopKF,bool vi)
                 {
                     std::cout<<kf->id_<<"save beforeUpdate_Tcw_"<<std::endl;
                     kf->beforeUpdate_Tcw_ = kf->Tcw();
+                    kf->SetBeforeUpdate(kf->Tcw(),kf->GetNavState().Get_V());
                 }
             }
 

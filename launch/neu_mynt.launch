@@ -1,6 +1,6 @@
 <launch>
     <node name="ssvio" pkg="ssvo" type="monoVIO_neu" output="screen">
-        <param name="config_file" type="string" value="$(find ssvo)/config/euroc.yaml" />
+        <param name="config_file" type="string" value="$(find ssvo)/config/vio.yaml" />
         <param name="calib_file" type="string" value="$(find ssvo)/calib/neu_mynt.yaml" />
         <param name="imu_config_file" type="string" value="$(find ssvo)/config/mynt_imu.yaml" />
     </node>

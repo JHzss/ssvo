@@ -108,7 +108,7 @@ void Frame::setPose(const SE3d& pose)
     Twb_ = Twc_ * Tcb;
     Tbw_ = Twb_.inverse();
 
-//    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
+    UpdateNavStatePRFromTcw(Tcw_,Tcb.inverse());
 }
 
 void Frame::setPose(const Matrix3d& R, const Vector3d& t)
@@ -122,7 +122,7 @@ void Frame::setPose(const Matrix3d& R, const Vector3d& t)
     Twb_ = Twc_ * Tcb;
     Tbw_ = Twb_.inverse();
 
-//    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
+    UpdateNavStatePRFromTcw(Tcw_,Tcb.inverse());
 
 }
 
@@ -137,7 +137,7 @@ void Frame::setTcw(const SE3d &Tcw)
     Twb_ = Twc_ * Tcb;
     Tbw_ = Twb_.inverse();
 
-//    UpdateNavStatePRFromTcw(Tcw_,Tcb.inverse());
+    UpdateNavStatePRFromTcw(Tcw_,Tcb.inverse());
 }
 
 void Frame::setTwb(const SE3d &Twb)
@@ -151,7 +151,7 @@ void Frame::setTwb(const SE3d &Twb)
     Twc_ = Tcw_.inverse();
     Dw_ = Tcw_.rotationMatrix().determinant() * Tcw_.rotationMatrix().col(2);
 
-//    UpdateNavStatePVRFromTcw(Tcw_,Tcb.inverse());
+    UpdateNavStatePRFromTcw(Tcw_,Tcb.inverse());
 }
 
 bool Frame::isVisiable(const Vector3d &xyz_w, const int border)
@@ -500,7 +500,7 @@ void Frame::UpdateNavStatePVRFromTcw(const SE3d &Tbc)
 
     mNavState.Set_Pos(Pwb);
     mNavState.Set_Rot(Rwb);
-    mNavState.Set_Vel(Vw2);
+//    mNavState.Set_Vel(Vw2);
 }
 void Frame::UpdateNavStatePRFromTcw(const SE3d &Tcw,const SE3d &Tbc)
 {

@@ -57,6 +57,7 @@ private:
 
     int createSeeds(const KeyFrame::Ptr &keyframe, const Frame::Ptr &frame = nullptr);
 
+    //! 双向光流跟踪确定种子点的匹配关系
     int trackSeeds(const Frame::Ptr &frame_last, const Frame::Ptr &frame_cur) const;
 
     int updateSeeds(const Frame::Ptr &frame);

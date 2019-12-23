@@ -142,6 +142,7 @@ public:
 
     SE3d beforeGBA_Tcw_;
     SE3d beforeUpdate_Tcw_;
+    Vector3d beforeUpdate_V_;
 
 protected:
 
@@ -197,7 +198,7 @@ public:
 
 protected:
     std::mutex mMutexNavState;
-    NavState mNavState;
+    NavState mNavState; //当前帧的状态
 
     // IMU Data from lask Frame to this Frame
     std::mutex mMutexIMUData;

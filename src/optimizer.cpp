@@ -995,12 +995,12 @@ void Optimizer::OptimizeEssentialGraph(Map::Ptr pMap, KeyFrame::Ptr pLoopKF, Key
 //-------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------
-    /**
-     * 计算陀螺仪bias
-     * @param vTwc [in]
-     * @param vImuPreInt [in]
-     * @return 计算得到的bg
-     */
+/**
+ * 计算陀螺仪bias
+ * @param vTwc [in]
+ * @param vImuPreInt [in]
+ * @return 计算得到的bg
+ */
 Vector3d Optimizer::OptimizeInitialGyroBias(const std::vector<SE3d,Eigen::aligned_allocator<SE3d>>& vTwc, const std::vector<IMUPreintegrator>& vImuPreInt)
 {
     int N = vTwc.size();
@@ -1010,6 +1010,9 @@ Vector3d Optimizer::OptimizeInitialGyroBias(const std::vector<SE3d,Eigen::aligne
     Matrix3d Rcb = Tbc.topLeftCorner(3,3).transpose();
 
     ceres::Problem problem;
+
+    ceres::LossFunction *loss_function;
+    loss_function = new ceres::CauchyLoss(7.815);//降低外点的影响
 
     //!仅有这一个优化变量
     Vector3d vBiasg;
@@ -1036,7 +1039,7 @@ Vector3d Optimizer::OptimizeInitialGyroBias(const std::vector<SE3d,Eigen::aligne
         Matrix3d Rwbj = Rwcj*Rcb;
 
         ceres::CostFunction* costFunction = ceres_slover::GyrBiasError::Creat(dRbij,J_dR_bg,Rwbi,Rwbj);
-        problem.AddResidualBlock(costFunction,NULL,vBiasg.data());
+        problem.AddResidualBlock(costFunction,loss_function,vBiasg.data());
     }
 
     ceres::Solver::Options options;
@@ -1051,6 +1054,78 @@ Vector3d Optimizer::OptimizeInitialGyroBias(const std::vector<SE3d,Eigen::aligne
     std::cout<<summary.FullReport()<<std::endl;
 
     return vBiasg;
+}
+
+/**
+ * 计算尺度、重力分量
+ * @param
+ * @param
+ * @return
+ */
+void Optimizer::OptimizeInitialScaleGravity(const std::vector<SE3d, Eigen::aligned_allocator<SE3d>> &vE_Twc, const std::vector<std::shared_ptr<KeyFrameInit>> &vKFInit)
+{
+//    ceres::Problem problem;
+//    ceres::LossFunction *loss_function;
+//    loss_function = new ceres::CauchyLoss(1.0);//降低外点的影响
+//    double X[4];
+//
+//    int N = vKFInit.size();
+//
+//    Eigen::MatrixXd A{3*(N-2),4};
+//    Eigen::VectorXd B{3*(N-2)};
+//    Eigen::Matrix3d I3;
+//
+//    A.setZero();
+//    B.setZero();
+//    I3.setIdentity();
+//
+//    for(int i = 0; i<N-2; i++)
+//    {
+//        //KeyFrameInit* pKF1 = vKFInit[i];//vScaleGravityKF[i];
+//        KeyFrameInit::Ptr pKF2 = vKFInit[i+1];
+//        KeyFrameInit::Ptr pKF3 = vKFInit[i+2];
+//        // Delta time between frames
+//        double dt12 = pKF2->mIMUPreInt.getDeltaTime();
+//        double dt23 = pKF3->mIMUPreInt.getDeltaTime();
+//        // Pre-integrated measurements
+//        Vector3d dp12 = pKF2->mIMUPreInt.getDeltaP();
+//        Vector3d dv12 = pKF2->mIMUPreInt.getDeltaV();
+//        Vector3d dp23 = pKF3->mIMUPreInt.getDeltaP();
+//
+//        SE3d Twc1 = vE_Twc[i];
+//        SE3d Twc2 = vE_Twc[i+1];
+//        SE3d Twc3 = vE_Twc[i+2];
+//
+//        Vector3d pc1 = Twc1.translation();
+//        Vector3d pc2 = Twc2.translation();
+//        Vector3d pc3 = Twc3.translation();
+//
+//        Matrix3d Rc1 = Twc1.rotationMatrix();
+//        Matrix3d Rc2 = Twc2.rotationMatrix();
+//        Matrix3d Rc3 = Twc3.rotationMatrix();
+//
+//        // Stack to A/B matrix
+//        // lambda*s + beta*g = gamma
+//        Vector3d lambda = (pc2-pc1)*dt23 + (pc2-pc3)*dt12;
+//        Matrix3d beta = 0.5*I3*(dt12*dt12*dt23 + dt12*dt23*dt23);
+//        Vector3d gamma = (Rc3-Rc2)*E_pcb*dt12 + (Rc1-Rc2)*E_pcb*dt23 + Rc1*E_Rcb*dp12*dt23 - Rc2*E_Rcb*dp23*dt12 - Rc1*E_Rcb*dv12*dt12*dt23;
+//
+//        A.block(3*i,0,3,1) = lambda;
+//        A.block(3*i,1,3,3) = beta;
+//        B.block(3*i,0,3,1) = gamma;
+//        // Tested the formulation in paper, -gamma. Then the scale and gravity vector is -xx
+//
+//         Matrix<double,3,4> A_;
+//         Vector3d B_;
+//         A_.block(0,0,3,1) = lambda;
+//         A_.block(0,1,3,3) = beta;
+//         B_ = gamma;
+//
+//         ceres::CostFunction* costFunction = ceres_slover::AlignmentError::Creat(A_,B_);
+//         problem.AddResidualBlock(costFunction,loss_function,X);
+//
+//    }
+
 }
 
 void Optimizer::GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d &gw, int nIterations,const uint64_t nLoopKF, bool report, bool verbose)

@@ -16,6 +16,7 @@ KeyFrame::KeyFrame(const Frame::Ptr frame):
     mpt_fts_ = frame->features();
     setRefKeyFrame(frame->getRefKeyFrame());
     setPose(frame->pose());
+    beforeUpdate_Tcw_ = frame->pose().inverse();
 }
 
 KeyFrame::KeyFrame(const Frame::Ptr frame, std::vector<IMUData> vIMUData, KeyFrame::Ptr pPrevKF):
@@ -33,6 +34,7 @@ KeyFrame::KeyFrame(const Frame::Ptr frame, std::vector<IMUData> vIMUData, KeyFra
     mpt_fts_ = frame->features();
     setRefKeyFrame(frame->getRefKeyFrame());
     setPose(frame->pose());
+    beforeUpdate_Tcw_ = frame->pose().inverse();
 }
 void KeyFrame::updateConnections()
 {
@@ -460,6 +462,12 @@ void KeyFrame::SetNavStateDeltaBa(const Vector3d &dba)
 {
     std::unique_lock<std::mutex> lock(mMutexNavState);
     mNavState.Set_DeltaBiasAcc(dba);
+}
+
+void KeyFrame::SetBeforeUpdate(const SE3d &Tcw, const Vector3d &velocity)
+{
+    beforeUpdate_Tcw_ = Tcw;
+    beforeUpdate_V_ = velocity;
 }
 
 const IMUPreintegrator & KeyFrame::GetIMUPreInt(void)

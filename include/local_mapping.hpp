@@ -190,8 +190,6 @@ public:
 
 
 protected:
-    double mnStartTime;
-    bool mbFirstTry;
 
     //估计尺度的结果
     double mnVINSInitScale;

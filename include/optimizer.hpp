@@ -4,16 +4,16 @@
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
 
-#include "map_point.hpp"
-#include "keyframe.hpp"
 #include "map.hpp"
 #include "global.hpp"
 #include "add_math.hpp"
+#include "local_mapping.hpp"
 //#include "loop_closure.hpp"
 
 namespace ssvo {
 
 //class LoopClosure;
+class KeyFrameInit;
 
 class Optimizer: public noncopyable
 {
@@ -73,15 +73,23 @@ public:
 //-------------------------------------------------------------------------------------------
     //! 正常状态下的陀螺仪bias的初始化
     static Vector3d OptimizeInitialGyroBias(const std::vector<SE3d,Eigen::aligned_allocator<SE3d>>& vE_Twc, const std::vector<IMUPreintegrator>& vImuPreInt);
+
+    //! 正常状态下的尺度、重力的初始化
+    static void OptimizeInitialScaleGravity(const std::vector<SE3d,Eigen::aligned_allocator<SE3d>>& vE_Twc, const std::vector<std::shared_ptr<KeyFrameInit>>& vKFInit);
+
     //! 重定位时对陀螺仪bias的初始化
     static Vector3d OptimizeInitialGyroBias(const std::vector<Frame::Ptr> vFrames);
+
     //! 全局BA 用于视-惯初始化完成之后和检测到闭环之后
     static void GlobalBundleAdjustmentNavStatePRV(Map::Ptr pMap, const Vector3d& gw, int nIterations, const uint64_t nLoopKF = 0, bool report=false, bool verbose=false);
+
     //! 滑动窗口的优化
     static void LocalBAPRVIDP(Map::Ptr pMap, const KeyFrame::Ptr keyframe,const std::vector<KeyFrame::Ptr> &actived_keyframes, std::list<MapPoint::Ptr> &bad_mpts, int size,
                               int min_shared_fts,const Vector3d& gw, bool report, bool verbose);
+
     //! 单帧的位姿优化，用于当前帧的优化
     static int PoseOptimization(Frame::Ptr PFrame, KeyFrame::Ptr pLastKF, const IMUPreintegrator& imupreint, const Vector3d& gw, const bool& bComputeMarg=false);
+
     static int PoseOptimization(Frame::Ptr pFrame, Frame::Ptr pLastFrame, const IMUPreintegrator& imupreint, const Vector3d& gw, const bool& bComputeMarg=false);
 
 

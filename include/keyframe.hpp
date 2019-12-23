@@ -170,6 +170,9 @@ public:
     void SetNavStateDeltaBg(const Vector3d &dbg);
     void SetNavStateDeltaBa(const Vector3d &dba);
 
+    //! 设置优化前的状态
+    void SetBeforeUpdate(const SE3d& Tcw, const Vector3d& velocity);
+
 
 
     // Variables used by loop closing

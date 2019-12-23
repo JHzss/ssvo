@@ -96,7 +96,7 @@ private:
 
     FastDetector::Ptr fast_detector_;
 
-    std::deque<FrameCandidate::Ptr> frame_buffer_;
+    std::deque<FrameCandidate::Ptr> frame_buffer_; //两个初始化KF之间的frame
 
     FrameCandidate::Ptr cand_ref_;//！ front of frame_buffer_
     FrameCandidate::Ptr cand_cur_;
@@ -113,7 +113,7 @@ private:
 //! imu---------------------------
 public:
     //! 好像没什么用
-    std::deque<std::vector<ssvo::IMUData>> imus_buffer_;
+    std::deque<std::vector<ssvo::IMUData>> imus_buffer_; //要随着frame_buffer_的变化而变化，才能保证这个buffer里面是初始化两帧KF之间的imus
 };
 
 }//! namspace ssvo

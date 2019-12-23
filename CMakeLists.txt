@@ -88,7 +88,6 @@ find_package(catkin REQUIRED COMPONENTS
 		nav_msgs
 		tf
 		cv_bridge
-		camera_model
 		)
 include_directories(${catkin_INCLUDE_DIRS})
 
@@ -196,8 +195,8 @@ if(SSVO_TEST_ENABLE)
 add_executable(test_feature_detector test/test_feature_detector.cpp)
 target_link_libraries(test_feature_detector ${PROJECT_NAME})
 
-add_executable(test_initializer_seq test/test_initializer_seq.cpp src/initializer.cpp)
-target_link_libraries(test_initializer_seq ${PROJECT_NAME})
+#add_executable(test_initializer_seq test/test_initializer_seq.cpp src/initializer.cpp)
+#target_link_libraries(test_initializer_seq ${PROJECT_NAME})
 
 add_executable(test_glog test/test_glog.cpp)
 target_link_libraries(test_glog  ${PROJECT_NAME})
